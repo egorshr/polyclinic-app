@@ -1,18 +1,21 @@
 
 services:
   web:
-    build: .
+    build: docker/php
+
     ports:
-      - "8080:80"
+      - "8741:80"
     volumes:
-      - ./src:/var/www/html
-    depends_on:
-      - db
+      - ./docker/php/vhosts:/etc/apache2/sites-enabled
+      - .:/var/www/html
+    restart: always
     networks:
       - app-network
 
   db:
     image: mysql:8.0
+    restart: always
+    container_name: db_symfony
     environment:
       MYSQL_DATABASE: mydb
       MYSQL_USER: user
@@ -26,6 +29,8 @@ services:
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_symfony
+    restart: always
     depends_on:
       - db
     environment:
