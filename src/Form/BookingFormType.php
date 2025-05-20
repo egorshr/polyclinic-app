@@ -31,8 +31,11 @@ class BookingFormType extends AbstractType
                         'message' => 'Имя может содержать только буквы, пробелы и дефисы'
                     ])
                 ],
-                'label' => 'Имя',
-                'attr' => ['class' => 'form-control']
+                'label' => 'Имя клиента',
+                'attr' => [
+                    'class' => 'form-control',
+                    'placeholder' => 'Введите имя клиента'
+                ]
             ])
             ->add('service', ChoiceType::class, [
                 'choices' => array_combine(Service::getAvailableServices(), Service::getAvailableServices()),
@@ -40,7 +43,9 @@ class BookingFormType extends AbstractType
                     new Assert\NotBlank(['message' => 'Услуга не выбрана'])
                 ],
                 'label' => 'Услуга',
-                'attr' => ['class' => 'form-control']
+                'attr' => [
+                    'class' => 'form-control',
+                ]
             ])
             ->add('photographer', ChoiceType::class, [
                 'choices' => array_combine(Photographer::getAvailablePhotographers(), Photographer::getAvailablePhotographers()),
@@ -48,7 +53,9 @@ class BookingFormType extends AbstractType
                     new Assert\NotBlank(['message' => 'Фотограф не выбран'])
                 ],
                 'label' => 'Фотограф',
-                'attr' => ['class' => 'form-control']
+                'attr' => [
+                    'class' => 'form-control',
+                ]
             ])
             ->add('date', DateType::class, [
                 'widget' => 'single_text',
@@ -59,12 +66,15 @@ class BookingFormType extends AbstractType
                         'message' => 'Дата не может быть в прошлом'
                     ])
                 ],
-                'label' => 'Дата',
-                'attr' => ['class' => 'form-control']
+                'label' => 'Дата съёмки',
+                'attr' => [
+                    'class' => 'form-control',
+                    'min' => (new \DateTime())->format('Y-m-d')
+                ]
             ])
             ->add('submit', SubmitType::class, [
                 'label' => 'Забронировать',
-                'attr' => ['class' => 'btn btn-primary mt-3']
+                'attr' => ['class' => 'btn btn-primary mt-3 w-100']
             ]);
     }
 

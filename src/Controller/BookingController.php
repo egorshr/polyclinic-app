@@ -3,8 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Booking;
+use App\Form\BookingFormType;
 use App\Repository\BookingRepository;
 use App\Service\DataMigrator;
+use App\Service\StorageService;
 use DateTime;
 use Mpdf\Mpdf;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -13,17 +15,53 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Annotation\Route;
 
 class BookingController extends AbstractController
 {
     private BookingRepository $repository;
     private DataMigrator $dataMigrator;
+    private StorageService $storageService;
 
-    public function __construct(BookingRepository $repository, DataMigrator $dataMigrator)
+    public function __construct(BookingRepository $repository, DataMigrator $dataMigrator, StorageService $storageService)
     {
         $this->repository = $repository;
         $this->dataMigrator = $dataMigrator;
+        $this->storageService = $storageService;
+    }
+
+    #[Route('/booking', name: 'booking_form')]
+    public function bookingForm(Request $request): Response
+    {
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        $booking = new Booking();
+        $form = $this->createForm(BookingFormType::class, $booking);
+
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            $booking->setUserId($user->getId());
+
+            $storageType = $this->storageService->getStorageType($request);
+
+            if ($storageType === 'db') {
+                $this->repository->save($booking, true);
+            } else {
+                $this->repository->saveToCsv($booking);
+            }
+
+            $this->addFlash('success', 'Бронирование успешно создано!');
+            return $this->redirectToRoute('booking_success');
+        }
+
+        return $this->render('booking/form.html.twig', [
+            'bookingForm' => $form->createView(),
+            'storage_type' => $this->storageService->getStorageType($request),
+        ]);
     }
 
     #[Route('/booking/submit', name: 'booking_submit', methods: ['POST'])]
@@ -92,8 +130,14 @@ class BookingController extends AbstractController
         return $this->redirectToRoute('booking_success');
     }
 
+    #[Route('/booking/success', name: 'booking_success')]
+    public function bookingSuccess(): Response
+    {
+        return $this->render('booking/success.html.twig');
+    }
+
     #[Route('/booking/migrate', name: 'booking_migrate')]
-    public function migrateData(): Response
+    public function migrateData(Request $request): Response
     {
         $user = $this->getUser();
 
@@ -102,9 +146,16 @@ class BookingController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
+        $direction = $request->query->get('direction', 'csv_to_db');
+
         try {
-            $migratedCount = $this->dataMigrator->migrateFromCsvToDb($user->getId());
-            $this->addFlash('success', "Успешно мигрировано записей: {$migratedCount}");
+            if ($direction === 'csv_to_db') {
+                $migratedCount = $this->dataMigrator->migrateFromCsvToDb($user->getId());
+                $this->addFlash('success', "Успешно мигрировано записей из CSV в БД: {$migratedCount}");
+            } else {
+                $migratedCount = $this->dataMigrator->migrateFromDbToCsv($user->getId());
+                $this->addFlash('success', "Успешно мигрировано записей из БД в CSV: {$migratedCount}");
+            }
         } catch (\Exception $e) {
             $this->addFlash('error', 'Ошибка при миграции: ' . $e->getMessage());
         }
@@ -135,6 +186,20 @@ class BookingController extends AbstractController
             'storage_type' => $storageType,
             'filters' => $filters,
         ]);
+    }
+
+    #[Route('/storage/toggle', name: 'storage_toggle')]
+    public function toggleStorage(Request $request): Response
+    {
+        $currentStorage = $request->cookies->get('storage_type', 'csv');
+        $newStorage = $currentStorage === 'csv' ? 'db' : 'csv';
+
+        $response = $this->redirectToRoute('booking_index');
+        $this->storageService->setStorageType($response, $newStorage);
+
+        $this->addFlash('info', 'Тип хранилища изменен на ' . ($newStorage === 'db' ? 'базу данных' : 'CSV файл'));
+
+        return $response;
     }
 
     #[Route('/bookings/export/pdf', name: 'booking_export_pdf')]

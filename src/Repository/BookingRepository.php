@@ -114,7 +114,7 @@ class BookingRepository extends ServiceEntityRepository
         }
 
         $file = fopen($filePath, 'r');
-        fgetcsv($file); // пропускаем заголовок
+        fgetcsv($file);
 
         $bookings = [];
         while (($data = fgetcsv($file)) !== false) {

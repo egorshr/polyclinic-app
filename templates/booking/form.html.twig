@@ -1,0 +1,106 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Оформление бронирования{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .booking-container {
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .form-title {
+            margin-bottom: 24px;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+
+    <div class="container">
+        <div class="booking-container">
+            <h2 class="form-title">Бронирование фотосессии</h2>
+
+            {% if errors is defined and errors %}
+                <div class="alert alert-danger">
+                    <ul class="mb-0">
+                        {% for error in errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {% for message in app.flashes('success') %}
+                <div class="alert alert-success">
+                    {{ message }}
+                </div>
+            {% endfor %}
+
+            {% if bookingForm is defined %}
+                {{ form_start(bookingForm) }}
+                {{ form_widget(bookingForm) }}
+                {{ form_end(bookingForm) }}
+            {% else %}
+                <form action="{{ path('booking_submit') }}" method="post">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Имя клиента</label>
+                        <input type="text" id="name" name="name" class="form-control"
+                               value="{{ data.name|default('') }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="service" class="form-label">Услуга</label>
+                        <select id="service" name="service" class="form-control" required>
+                            <option value="">Выберите услугу</option>
+                            {% for service in ['Портретная съёмка', 'Семейная фотосессия', 'Съёмка на документы', 'Творческая съёмка'] %}
+                                <option value="{{ service }}" {% if data.service is defined and data.service == service %}selected{% endif %}>
+                                    {{ service }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="photographer" class="form-label">Фотограф</label>
+                        <select id="photographer" name="photographer" class="form-control" required>
+                            <option value="">Выберите фотографа</option>
+                            {% for photographer in ['Анна Иванова', 'Игорь Петров', 'Екатерина Смирнова'] %}
+                                <option value="{{ photographer }}" {% if data.photographer is defined and data.photographer == photographer %}selected{% endif %}>
+                                    {{ photographer }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Дата съёмки</label>
+                        <input type="date" id="date" name="date" class="form-control"
+                               value="{{ data.date|default('') }}" min="{{ 'now'|date('Y-m-d') }}" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mt-3">Забронировать</button>
+                </form>
+            {% endif %}
+
+            <div class="text-center mt-3">
+                <p>Данные сохраняются в {{ storage_type == 'db' ? 'базу данных' : 'CSV файл' }}
+                    <a href="{{ path('storage_toggle') }}" class="ms-2 btn btn-sm btn-outline-secondary">
+                        Изменить на {{ storage_type == 'db' ? 'CSV' : 'БД' }}
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}
