@@ -4,11 +4,15 @@ namespace App\Entity;
 
 use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
-class User implements UserInterface
+#[UniqueEntity(fields: ['username'], message: 'Пользователь с таким именем уже существует')]
+class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -16,22 +20,37 @@ class User implements UserInterface
     private ?int $id = null;
 
     #[ORM\Column(type: 'string', length: 180, unique: true)]
+    #[Assert\NotBlank(message: 'Имя пользователя не может быть пустым')]
+    #[Assert\Length(
+        min: 3,
+        max: 30,
+        minMessage: 'Имя пользователя должно содержать минимум {{ limit }} символа',
+        maxMessage: 'Имя пользователя не может быть длиннее {{ limit }} символов'
+    )]
     private string $username;
 
     #[ORM\Column(type: 'string')]
     private string $passwordHash;
 
-    #[ORM\Column(type: 'string', length: 50)]
-    private string $role;
+    #[Assert\NotBlank(message: 'Пароль не может быть пустым', groups: ['registration'])]
+    #[Assert\Length(
+        min: 6,
+        minMessage: 'Пароль должен содержать минимум {{ limit }} символов',
+        groups: ['registration']
+    )]
+    private ?string $plainPassword = null;
+
+    #[ORM\Column(type: 'json')]
+    private array $roles = [];
 
     #[ORM\Column(type: 'datetime')]
     private \DateTimeInterface $createdAt;
 
-    public function __construct(string $username, string $passwordHash, string $role = 'ROLE_USER')
+    public function __construct(string $username = '', string $passwordHash = '')
     {
         $this->username = $username;
         $this->passwordHash = $passwordHash;
-        $this->role = $role;
+        $this->roles = ['ROLE_USER'];
         $this->createdAt = new \DateTime();
     }
 
@@ -40,12 +59,10 @@ class User implements UserInterface
         return $this->id;
     }
 
-    // Новый обязательный метод Symfony 5.3+
     public function getUserIdentifier(): string
     {
         return $this->username;
     }
-
 
     public function getUsername(): string
     {
@@ -58,20 +75,38 @@ class User implements UserInterface
         return $this;
     }
 
-    // Метод для получения роли(ей) пользователя
+    /**
+     * Возвращает роли пользователя
+     *
+     * @return string[] The user roles
+     */
     public function getRoles(): array
     {
-        // Можно вернуть массив с одной ролью или расширить по необходимости
-        return [$this->role];
+        $roles = $this->roles;
+        // Гарантируем, что у каждого пользователя есть роль ROLE_USER
+        $roles[] = 'ROLE_USER';
+
+        return array_unique($roles);
     }
 
-    public function setRole(string $role): self
+    public function setRoles(array $roles): self
     {
-        $this->role = $role;
+        $this->roles = $roles;
         return $this;
     }
 
+    /**
+     * @see PasswordAuthenticatedUserInterface
+     */
     public function getPassword(): string
+    {
+        return $this->passwordHash;
+    }
+
+    /**
+     * Возвращает хешированный пароль
+     */
+    public function getPasswordHash(): string
     {
         return $this->passwordHash;
     }
@@ -82,15 +117,24 @@ class User implements UserInterface
         return $this;
     }
 
-    public function getSalt(): ?string
+    public function getPlainPassword(): ?string
     {
-        // Если используешь современный алгоритм (bcrypt, sodium) — соль не нужна
-        return null;
+        return $this->plainPassword;
     }
 
+    public function setPlainPassword(?string $plainPassword): self
+    {
+        $this->plainPassword = $plainPassword;
+        return $this;
+    }
+
+    /**
+     * @see UserInterface
+     */
     public function eraseCredentials(): void
     {
-        // Очистить временные или чувствительные данные, если хранятся
+        // Если у вас сохраняется временный простой пароль, сбросьте его здесь
+        $this->plainPassword = null;
     }
 
     public function getCreatedAt(): \DateTimeInterface
