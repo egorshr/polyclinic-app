@@ -13,19 +13,19 @@ use Symfony\Component\HttpKernel\KernelInterface;
 class DataMigrator
 {
     private EntityManagerInterface $entityManager;
-    private string $dataPath;
+    private string $csvBasePath;
     private Filesystem $filesystem;
 
     public function __construct(EntityManagerInterface $entityManager, KernelInterface $kernel)
     {
         $this->entityManager = $entityManager;
-        $this->dataPath = $kernel->getProjectDir() . '/data';
+        $this->csvBasePath = $kernel->getProjectDir() . '/var/csv';
         $this->filesystem = new Filesystem();
     }
 
     public function migrateFromCsvToDb(int $userId): int
     {
-        $filePath = sprintf('%s/bookings_%d.csv', $this->dataPath, $userId);
+        $filePath = sprintf('%s/bookings_%d.csv', $this->csvBasePath, $userId);
 
         if (!$this->filesystem->exists($filePath)) {
             return 0;
@@ -66,7 +66,7 @@ class DataMigrator
                     $this->entityManager->persist($booking);
                     $migrated++;
                 } catch (Exception) {
-                    // Можно заблокировать ошибку $e->getMessage()
+                    // Можно логировать ошибку $e->getMessage()
                     continue;
                 }
             }
