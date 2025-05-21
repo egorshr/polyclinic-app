@@ -1,51 +1,41 @@
 <?php
 
+
 namespace App\Entity;
 
-use DateTimeInterface;
-use DateTimeImmutable;
+use App\Repository\BookingRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity]
-#[ORM\Table(name: 'bookings')]
+#[ORM\Entity(repositoryClass: BookingRepository::class)]
 class Booking
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    #[ORM\Column(length: 255)]
     private string $name;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    #[ORM\Column(length: 255)]
     private string $service;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    #[ORM\Column(length: 255)]
     private string $photographer;
 
-    #[ORM\Column(type: 'date')]
-    private DateTimeInterface $date;
+    #[ORM\Column(length: 255)]
+    private string $date;
 
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column]
     private int $userId;
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private DateTimeImmutable $createdAt;
-
-    public function __construct(
-        string $name,
-        string $service,
-        string $photographer,
-        string $date, // формат 'YYYY-MM-DD'
-        int $userId
-    ) {
+    public function __construct(string $name, string $service, string $photographer, string $date, int $userId)
+    {
         $this->name = $name;
         $this->service = $service;
         $this->photographer = $photographer;
-        $this->date = new \DateTime($date);
+        $this->date = $date;
         $this->userId = $userId;
-        $this->createdAt = new DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -68,7 +58,7 @@ class Booking
         return $this->photographer;
     }
 
-    public function getDate(): DateTimeInterface
+    public function getDate(): string
     {
         return $this->date;
     }
@@ -76,35 +66,5 @@ class Booking
     public function getUserId(): int
     {
         return $this->userId;
-    }
-
-    public function getCreatedAt(): DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function setName(string $name): void
-    {
-        $this->name = $name;
-    }
-
-    public function setService(string $service): void
-    {
-        $this->service = $service;
-    }
-
-    public function setPhotographer(string $photographer): void
-    {
-        $this->photographer = $photographer;
-    }
-
-    public function setDate(DateTimeInterface $date): void
-    {
-        $this->date = $date;
-    }
-
-    public function setUserId(int $userId): void
-    {
-        $this->userId = $userId;
     }
 }

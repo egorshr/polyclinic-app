@@ -1,0 +1,74 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Успешно - {{ parent() }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f8;
+            margin: 0;
+            padding: 0;
+        }
+
+        .success-container { /* Переименован класс */
+            max-width: 500px;
+            background: white;
+            padding: 30px;
+            margin: 50px auto;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .success-icon-custom { /* Класс для иконки */
+            font-size: 48px;
+            color: #4caf50;
+            margin-bottom: 20px;
+        }
+
+        .success-container h1.page-title { /* Класс для h1 */
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .success-nav-links { /* Класс для ссылок */
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .success-button { /* Класс для кнопок-ссылок */
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #5c67f2;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .success-button:hover {
+            background-color: #434de2;
+        }
+        /* .user-info теперь в _navbar.html.twig */
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="success-container">
+        {# Информация о пользователе теперь в _navbar.html.twig #}
+
+        <div class="success-icon-custom">✓</div> {# HTML-код галочки ✓ #}
+        <h1 class="page-title">Запись успешно отправлена!</h1>
+
+        <div class="success-nav-links">
+            <a href="{{ path('booking_form_show') }}" class="success-button">Новая запись</a>
+            <a href="{{ path('booking_list') }}" class="success-button">Все записи</a>
+        </div>
+    </div>
+{% endblock %}

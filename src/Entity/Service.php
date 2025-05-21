@@ -1,23 +1,35 @@
 <?php
 
+// src/Entity/Service.php
 namespace App\Entity;
 
+use App\Repository\ServiceRepository;
 use Doctrine\ORM\Mapping as ORM;
+use InvalidArgumentException;
 
-#[ORM\Entity]
-#[ORM\Table(name: 'services')]
+#[ORM\Entity(repositoryClass: ServiceRepository::class)]
 class Service
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: 'string', length: 255, unique: true)]
+    #[ORM\Column(length: 255, unique: true)]
     private string $name;
+
+    private const VALID_SERVICES = [
+        'Портретная съёмка',
+        'Семейная фотосессия',
+        'Съёмка на документы',
+        'Творческая съёмка',
+    ];
 
     public function __construct(string $name)
     {
+        if (!in_array($name, self::VALID_SERVICES, true)) {
+            throw new InvalidArgumentException('Невалидная услуга');
+        }
         $this->name = $name;
     }
 
@@ -31,8 +43,8 @@ class Service
         return $this->name;
     }
 
-    public function setName(string $name): void
+    public static function getAvailableServices(): array
     {
-        $this->name = $name;
+        return self::VALID_SERVICES;
     }
 }

@@ -1,15 +1,15 @@
 <?php
 
+// src/Entity/User.php
 namespace App\Entity;
 
 use App\Repository\UserRepository;
-use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\Table(name: 'users')]
+#[ORM\Table(name: '`user`')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -21,17 +21,20 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private string $username;
 
     #[ORM\Column]
-    private string $password;
+    private string $passwordHash;
 
     #[ORM\Column(length: 50)]
-    private string $role = 'ROLE_USER';
+    private string $role;
 
-    #[ORM\Column(name: 'created_at')]
-    private DateTimeImmutable $createdAt;
+    #[ORM\Column(length: 19)] // Format YYYY-MM-DD HH:MM:SS
+    private string $createdAt;
 
-    public function __construct()
+    public function __construct(string $username, string $passwordHash, string $role = 'user', ?string $createdAt = null)
     {
-        $this->createdAt = new DateTimeImmutable();
+        $this->username = $username;
+        $this->passwordHash = $passwordHash;
+        $this->role = $role;
+        $this->createdAt = $createdAt ?? date('Y-m-d H:i:s');
     }
 
     public function getId(): ?int
@@ -44,43 +47,69 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->username;
     }
 
-    public function setUsername(string $username): void
-    {
-        $this->username = $username;
-    }
-
+    /**
+     * @see PasswordAuthenticatedUserInterface
+     */
     public function getPassword(): string
     {
-        return $this->password;
+        return $this->passwordHash;
     }
 
-    public function setPassword(string $password): void
+    public function getPasswordHash(): string
     {
-        $this->password = $password;
+        return $this->passwordHash;
     }
 
+    public function setPasswordHash(string $passwordHash): self
+    {
+        $this->passwordHash = $passwordHash;
+        return $this;
+    }
+
+    public function getRole(): string
+    {
+        return $this->role;
+    }
+
+    /**
+     * @see UserInterface
+     */
     public function getRoles(): array
     {
-        return [$this->role];
+        $symfonyRoles = ['ROLE_USER'];
+        $normalizedCurrentRole = strtoupper($this->role);
+
+        if ($normalizedCurrentRole !== 'USER' && !empty($normalizedCurrentRole)) {
+            $roleToAdd = str_starts_with($normalizedCurrentRole, 'ROLE_') ? $normalizedCurrentRole : 'ROLE_' . $normalizedCurrentRole;
+            if ($roleToAdd !== 'ROLE_USER') {
+                $symfonyRoles[] = $roleToAdd;
+            }
+        }
+        return array_unique($symfonyRoles);
     }
 
-    public function setRole(string $role): void
+    public function getCreatedAt(): string
     {
-        $this->role = $role;
+        return $this->createdAt;
     }
 
+    public function verifyPassword(string $password): bool
+    {
+        return password_verify($password, $this->passwordHash);
+    }
+
+    /**
+     * @see UserInterface
+     */
+    public function eraseCredentials(): void
+    {
+    }
+
+    /**
+     * @see UserInterface
+     */
     public function getUserIdentifier(): string
     {
         return $this->username;
-    }
-
-    public function eraseCredentials(): void
-    {
-        // Очищаем временные данные (если есть)
-    }
-
-    public function getCreatedAt(): DateTimeImmutable
-    {
-        return $this->createdAt;
     }
 }

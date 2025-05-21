@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"> {# UTF-8 здесь, но Mpdf сам обрабатывает кодировку, важно указать 'mode' => 'utf-8' при его инициализации #}
+    <title>Отчет по бронированиям</title>
+    <style>
+        body {
+            font-family: DejaVu Sans, sans-serif; /* Важно для кириллицы в Mpdf, если шрифты по умолчанию не поддерживают */
+            font-size: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px; /* Добавлено для отступа, если будет еще контент */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<h1>Отчет по бронированиям</h1>
+<table>
+    <thead>
+    <tr>
+        {# Переменная storageType не передается в этот шаблон по умолчанию из контроллера,
+                   но если бы передавалась, логика была бы такой:
+                {% if storageType is defined and storageType == 'db' %}<th>ID</th>{% endif %}
+                   Однако, так как BookingRepository->getAllBookingsFromDb возвращает 'id',
+                   а getAllBookingsFromCsv - нет, можно просто проверять наличие ключа 'id'
+                   в первой записи, если bookings не пуст.
+                   Но проще всегда выводить колонку ID, а если значения нет, будет пусто.
+                   Или, если вы хотите строго следовать PHP, передавайте storageType.
+                   Для простоты, предполагаем, что данные из БД всегда имеют 'id'.
+        #}
+        <th>ID</th> {# Всегда показываем колонку ID, будет пустой для CSV, если нет ключа 'id' #}
+        <th>Имя</th>
+        <th>Услуга</th>
+        <th>Фотограф</th>
+        <th>Дата</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% if bookings is empty %}
+        <tr>
+            <td colspan="5" style="text-align: center;">Нет данных для отображения.</td>
+        </tr>
+    {% else %}
+        {% for booking_item in bookings %} {# Изменил имя переменной цикла, чтобы не конфликтовать с сущностью Booking, если бы она передавалась #}
+            <tr>
+                <td>{{ booking_item.id | default('') }}</td> {# Используем default('') на случай отсутствия ключа #}
+                <td>{{ booking_item.name | default('') }}</td>
+                <td>{{ booking_item.service | default('') }}</td>
+                <td>{{ booking_item.photographer | default('') }}</td>
+                <td>{{ booking_item.date | default('') }}</td>
+            </tr>
+        {% endfor %}
+    {% endif %}
+    </tbody>
+</table>
+</body>
+</html>

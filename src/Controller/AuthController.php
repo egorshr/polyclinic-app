@@ -1,78 +1,92 @@
 <?php
-
+// src/Controller/AuthController.php
 namespace App\Controller;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use JetBrains\PhpStorm\NoReturn;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class AuthController extends AbstractController
 {
     private UserRepository $userRepository;
-    private SessionInterface $session;
+    private UserPasswordHasherInterface $passwordHasher;
     private EntityManagerInterface $entityManager;
 
-    public function __construct(UserRepository $userRepository, SessionInterface $session, EntityManagerInterface $entityManager)
-    {
+    public function __construct(
+        UserRepository $userRepository,
+        UserPasswordHasherInterface $passwordHasher,
+        EntityManagerInterface $entityManager
+    ) {
         $this->userRepository = $userRepository;
-        $this->session = $session;
+        $this->passwordHasher = $passwordHasher;
         $this->entityManager = $entityManager;
     }
 
-    #[Route('/login', name: 'login_form', methods: ['GET'])]
-    public function showLoginForm(): Response
+    #[Route('/login', name: 'auth_login_form', methods: ['GET'])]
+    public function showLoginForm(Request $request): Response
     {
-        return $this->render('auth/login.html.twig', ['errors' => []]);
+        $errors = $request->getSession()->getFlashBag()->get('login_errors', []);
+        $usernameAttempt = $request->getSession()->getFlashBag()->get('login_username_attempt');
+        return $this->render('auth/login.html.twig', [
+            'errors' => $errors,
+            'username' => $usernameAttempt[0] ?? ''
+        ]);
     }
 
-    #[Route('/login', name: 'login', methods: ['POST'])]
-    public function login(Request $request): Response
+    #[Route('/login', name: 'auth_login_handle', methods: ['POST'])]
+    public function login(Request $request, SessionInterface $session): Response
     {
         $username = $request->request->get('username', '');
         $password = $request->request->get('password', '');
         $errors = [];
 
         if (empty($username) || empty($password)) {
-            return $this->render('auth/login.html.twig', ['errors' => ['Введите логин и пароль']]);
+            $session->getFlashBag()->add('login_errors', 'Логин и пароль обязательны для заполнения.');
+            if (!empty($username)) {
+                $session->getFlashBag()->add('login_username_attempt', $username);
+            }
+            return $this->redirectToRoute('auth_login_form');
         }
 
-        $user = $this->userRepository->getUserByUsername($username);
+        $user = $this->userRepository->findOneBy(['username' => $username]);
 
-        if (!$user || !password_verify($password, $user->getPassword())) {
-            return $this->render('auth/login.html.twig', ['errors' => ['Неверные учетные данные']]);
+        if (!$user || !$this->passwordHasher->isPasswordValid($user, $password)) {
+            $session->getFlashBag()->add('login_errors', 'Неверный логин или пароль.');
+            $session->getFlashBag()->add('login_username_attempt', $username);
+            return $this->redirectToRoute('auth_login_form');
         }
 
-        $this->session->set('user_id', $user->getId());
-        $this->session->set('username', $user->getUsername());
-        $this->session->set('role', $user->getRoles());
+        $session->set('user_id', $user->getId());
+        $session->set('username', $user->getUsername());
+        $session->set('role', $user->getRole());
 
-        return $this->redirectToRoute('form_page');
+        return $this->redirectToRoute('booking_form_show');
     }
 
-    #[Route('/register', name: 'register_form', methods: ['GET'])]
-    public function showRegisterForm(): Response
+    #[Route('/register', name: 'auth_register_form', methods: ['GET'])]
+    public function showRegisterForm(Request $request): Response
     {
-        return $this->render('auth/register.html.twig', ['errors' => []]);
+        $errors = $request->getSession()->getFlashBag()->get('register_errors', []);
+        $formData = $request->getSession()->getFlashBag()->get('register_form_data');
+        $currentFormData = $formData[0] ?? [];
+
+        return $this->render('auth/register.html.twig', [
+            'errors' => $errors,
+            'username' => $currentFormData['username'] ?? '',
+        ]);
     }
 
-    #[Route('/form', name: 'form_page', methods: ['GET'])]
-    public function formPage(): Response
-    {
-        // Здесь можно отрисовать шаблон с формой или любой другой контент
-        return $this->render('auth/form_page.html.twig');
-    }
-
-
-
-    #[Route('/register', name: 'register', methods: ['POST'])]
-    public function register(Request $request): Response
+    #[Route('/register', name: 'auth_register_handle', methods: ['POST'])]
+    public function register(Request $request, SessionInterface $session): Response
     {
         $username = $request->request->get('username', '');
         $password = $request->request->get('password', '');
@@ -95,61 +109,62 @@ class AuthController extends AbstractController
             $errors[] = "Пароли не совпадают";
         }
 
-        if ($this->userRepository->getUserByUsername($username)) {
+        if ($this->userRepository->findOneBy(['username' => $username])) {
             $errors[] = "Пользователь с таким логином уже существует";
         }
 
-
         if (!empty($errors)) {
-            return $this->render('auth/register.html.twig', ['errors' => $errors]);
+            $session->getFlashBag()->add('register_errors', $errors);
+            $session->getFlashBag()->add('register_form_data', ['username' => $username]);
+            return $this->redirectToRoute('auth_register_form');
         }
 
-        $user = new User();
-        $user->setUsername($username);
-        $user->setPassword(password_hash($password, PASSWORD_DEFAULT));
+        $tempUserForHasher = new User($username, '');
+        $hashedPassword = $this->passwordHasher->hashPassword($tempUserForHasher, $password);
+
+        $user = new User($username, $hashedPassword);
 
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        return $this->redirectToRoute('login_form');
+        $session->getFlashBag()->add('login_success', 'Регистрация прошла успешно. Пожалуйста, войдите.');
+        return $this->redirectToRoute('auth_login_form');
     }
 
-    #[Route('/logout', name: 'logout')]
-    #[NoReturn]
-    public function logout(): RedirectResponse
+    #[Route('/logout', name: 'auth_logout')]
+    public function logout(SessionInterface $session): RedirectResponse
     {
-        $this->session->clear();
-        return $this->redirectToRoute('login_form');
+        $session->invalidate();
+        return $this->redirectToRoute('auth_login_form');
     }
 
-    public static function isLoggedIn(SessionInterface $session): bool
+    public function isLoggedIn(SessionInterface $session): bool
     {
         return $session->has('user_id');
     }
 
-    public static function hasRole(SessionInterface $session, string $role): bool
+    public function hasRole(string $role, SessionInterface $session): bool
     {
-        return $session->get('role') === $role;
+        return $session->has('role') && $session->get('role') === $role;
     }
 
-    public static function requireLogin(SessionInterface $session): RedirectResponse|null
+    public function requireLogin(SessionInterface $session, UrlGeneratorInterface $urlGenerator): ?RedirectResponse
     {
-        if (!self::isLoggedIn($session)) {
-            return new RedirectResponse('/login');
+        if (!$this->isLoggedIn($session)) {
+            return new RedirectResponse($urlGenerator->generate('auth_login_form'));
         }
         return null;
     }
 
-    public static function requireAdmin(SessionInterface $session): Response|null
+    public function requireAdmin(SessionInterface $session, UrlGeneratorInterface $urlGenerator): ?Response
     {
-        if (!self::isLoggedIn($session)) {
-            return new RedirectResponse('/login');
+        $redirect = $this->requireLogin($session, $urlGenerator);
+        if ($redirect) {
+            return $redirect;
         }
-
-        if (!self::hasRole($session, 'admin')) {
-            return new Response('Доступ запрещен. Требуются права администратора.', 403);
+        if (!$this->hasRole('admin', $session)) {
+            throw new AccessDeniedHttpException("Доступ запрещен. Требуются права администратора.");
         }
-
         return null;
     }
 }

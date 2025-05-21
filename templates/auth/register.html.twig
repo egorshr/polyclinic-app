@@ -1,60 +1,130 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Регистрация - Фотостудия{% endblock %}
+{% block title %}Регистрация - {{ parent() }}{% endblock %}
 
-{% block content %}
-    <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white text-center">
-                    <h4 class="mb-0"><i class="bi bi-person-plus"></i> Регистрация</h4>
-                </div>
-                <div class="card-body p-4">
-                    {% if errors|length > 0 %}
-                        <div class="alert alert-danger">
-                            <ul class="mb-0">
-                                {% for error in errors %}
-                                    <li>{{ error }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    {% endif %}
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f8;
+            margin: 0;
+            padding: 0;
+        }
 
-                    <form method="post" action="{{ path('register') }}">
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Имя пользователя</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-person"></i></span>
-                                <input type="text" class="form-control" id="username" name="username" required autofocus>
-                            </div>
-                            <small class="text-muted">Минимум 3 символа</small>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Пароль</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                                <input type="password" class="form-control" id="password" name="password" required>
-                            </div>
-                            <small class="text-muted">Минимум 6 символов</small>
-                        </div>
-                        <div class="mb-4">
-                            <label for="confirm_password" class="form-label">Подтверждение пароля</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                            </div>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-person-check"></i> Зарегистрироваться
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                <div class="card-footer text-center py-3">
-                    <p class="mb-0">Уже есть аккаунт? <a href="{{ path('login_form') }}" class="text-decoration-none">Войдите</a></p>
-                </div>
+        .register-container { /* Переименован класс */
+            max-width: 400px;
+            background: white;
+            padding: 30px;
+            margin: 100px auto;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .register-container h1.page-title { /* Класс для h1 */
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        .register-label { /* Класс для label */
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .register-input { /* Класс для input */
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        .register-button { /* Класс для button */
+            background-color: #5c67f2;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: background-color 0.2s;
+        }
+
+        .register-button:hover {
+            background-color: #434de2;
+        }
+
+        .register-errors { /* Класс для ошибок */
+            background-color: #ffe0e0;
+            border: 1px solid #cc0000;
+            padding: 10px;
+            margin-bottom: 20px;
+            color: #cc0000;
+            border-radius: 4px;
+        }
+        .register-errors ul {
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+
+        .login-link-custom { /* Класс для ссылки на вход */
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .login-link-custom a {
+            color: #5c67f2;
+            text-decoration: none;
+        }
+
+        .login-link-custom a:hover {
+            text-decoration: underline;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="register-container">
+        <h1 class="page-title">Регистрация</h1>
+
+        {% if errors is defined and errors is not empty %}
+            <div class="register-errors">
+                <strong>Обнаружены ошибки:</strong>
+                <ul>
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
             </div>
-        </div>
+        {% endif %}
+
+        <form action="{{ path('auth_register_handle') }}" method="POST" autocomplete="off">
+            <div>
+                <label for="username" class="register-label">Логин</label>
+                <input type="text" id="username" name="username" class="register-input" value="{{ username | default('') }}" required>
+            </div>
+
+            <div>
+                <label for="password" class="register-label">Пароль</label>
+                <input type="password" id="password" name="password" class="register-input" required>
+            </div>
+
+            <div>
+                <label for="confirm_password" class="register-label">Подтверждение пароля</label>
+                <input type="password" id="confirm_password" name="confirm_password" class="register-input" required>
+            </div>
+
+            <button type="submit" class="register-button">Зарегистрироваться</button>
+
+            <div class="login-link-custom">
+                Уже есть аккаунт? <a href="{{ path('auth_login_form') }}">Войти</a>
+            </div>
+        </form>
     </div>
 {% endblock %}

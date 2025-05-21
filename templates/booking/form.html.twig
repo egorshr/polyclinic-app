@@ -1,247 +1,230 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Заказать фотосессию - Фотостудия{% endblock %}
+{% block title %}Запись в фотостудию - {{ parent() }}{% endblock %}
 
 {% block stylesheets %}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    {{ parent() }}
     <style>
-        .service-card, .photographer-card {
+        body {
+            font-family: Arial, sans-serif; /* Как в вашем PHP */
+            background-color: #f4f4f8;
+            margin: 0;
+            padding: 0;
+            /* color: #333; уже есть в base или другом месте */
+        }
+
+        .form-container { /* Переименовал, чтобы не конфликтовать с .container из base.html.twig */
+            max-width: 500px;
+            background: white;
+            padding: 30px;
+            margin: 50px auto;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-container h1.page-title { /* Добавлен класс для h1 */
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px; /* Добавлен отступ снизу */
+        }
+        /* .user-info и .nav-links теперь часть _navbar.html.twig и base.html.twig */
+
+        .form-label-custom { /* Для <label> */
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .form-input-custom, /* Для <input> и <select> */
+        .form-select-custom {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        .form-button-custom { /* Для <button> */
+            background-color: #5c67f2;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            font-size: 16px;
+            border-radius: 5px;
             cursor: pointer;
-            height: 100%;
+            transition: background-color 0.2s; /* Добавил transition */
         }
-        .service-card.selected, .photographer-card.selected {
-            border-color: #5a67d8;
-            box-shadow: 0 0 0 0.25rem rgba(90, 103, 216, 0.5);
+
+        .form-button-custom:hover {
+            background-color: #434de2;
         }
-        .service-image, .photographer-image {
-            height: 150px;
-            object-fit: cover;
+
+        .errors-custom { /* Для блока ошибок */
+            background-color: #ffe0e0;
+            border: 1px solid #cc0000;
+            padding: 10px;
+            margin-bottom: 20px;
+            color: #cc0000;
+            border-radius: 4px;
+        }
+        .errors-custom ul {
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+
+        .storage-selector {
+            background-color: #f2f2f2;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .storage-selector h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1.1em; /* Немного уменьшил */
+        }
+
+        .storage-form {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .storage-form-options {
+            display: flex; /* Для размещения радиокнопок в ряд */
+            gap: 15px;    /* Пространство между радиокнопками */
+        }
+
+        .storage-form label { /* Для label радиокнопок */
+            margin-bottom: 0;
+            margin-right: 10px;
+            display: inline-flex;
+            align-items: center;
+            font-weight: normal; /* Убираем жирность с label радиокнопок */
+            color: #444;
+        }
+
+        .storage-form label input[type="radio"] {
+            width: auto;
+            margin-right: 5px;
+            margin-bottom: 0;
+            padding: 0; /* Убираем внутренние отступы у радио */
+            border: initial; /* Сброс стилей границы */
+            border-radius: initial;
+            box-sizing: initial;
+        }
+
+        .storage-form button { /* Для кнопки "Применить" в выборе хранилища */
+            width: auto;
+            padding: 8px 15px;
+            font-size: 14px; /* Уменьшил шрифт */
+            background-color: #6c757d; /* Серый цвет как у Bootstrap secondary */
+        }
+        .storage-form button:hover {
+            background-color: #5a6268;
+        }
+
+        .form-nav-links { /* Класс для ссылок под формой */
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding-top: 15px; /* Отступ сверху */
+            border-top: 1px solid #eee; /* Разделитель */
+        }
+
+        .form-nav-links a {
+            color: #5c67f2;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .form-nav-links a:hover {
+            text-decoration: underline;
         }
     </style>
 {% endblock %}
 
-{% block content %}
-    <h1 class="display-4 text-center mb-5">Заказать фотосессию</h1>
+{% block body %}
+    <div class="form-container">
+        <h1 class="page-title">Запись в фотостудию</h1>
+        {# Информация о пользователе теперь в _navbar.html.twig #}
 
-    {% if errors|length > 0 %}
-        <div class="alert alert-danger">
-            <ul class="mb-0">
-                {% for error in errors %}
-                    <li>{{ error }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-    {% endif %}
-
-    <div class="card shadow mb-5">
-        <div class="card-body p-4">
-            <form method="post" action="{{ path('submit_form') }}" id="bookingForm">
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <h3 class="border-bottom pb-2 mb-4">1. Личные данные</h3>
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Ваше имя</label>
-                            <input type="text" class="form-control" id="name" name="name" value="{{ data.name|default('') }}" required>
-                        </div>
-                    </div>
+        <div class="storage-selector">
+            <h3>Выберите тип хранилища данных</h3>
+            <form action="{{ path('booking_set_storage_type') }}" method="POST" class="storage-form">
+                <div class="storage-form-options">
+                    <label>
+                        <input type="radio" name="storage_type" value="csv" {{ storageType == 'csv' ? 'checked' : '' }}>
+                        CSV файл
+                    </label>
+                    <label>
+                        <input type="radio" name="storage_type" value="db" {{ storageType == 'db' ? 'checked' : '' }}>
+                        База данных
+                    </label>
                 </div>
-
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <h3 class="border-bottom pb-2 mb-4">2. Выберите услугу</h3>
-                        <div class="row row-cols-1 row-cols-md-3 g-4 mb-3">
-                            <div class="col">
-                                <div class="card service-card h-100" data-service="Портретная съемка">
-                                    <img src="/api/placeholder/400/300" class="card-img-top service-image" alt="Портретная съемка">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Портретная съемка</h5>
-                                        <p class="card-text">Профессиональные портреты в студии или на открытом воздухе.</p>
-                                    </div>
-                                    <div class="card-footer">
-                                        <small class="text-muted">от 3000 руб.</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="card service-card h-100" data-service="Свадебная фотосессия">
-                                    <img src="/api/placeholder/400/300" class="card-img-top service-image" alt="Свадебная фотосессия">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Свадебная фотосессия</h5>
-                                        <p class="card-text">Запечатлим яркие моменты вашего особенного дня.</p>
-                                    </div>
-                                    <div class="card-footer">
-                                        <small class="text-muted">от 15000 руб.</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="card service-card h-100" data-service="Семейная фотосессия">
-                                    <img src="/api/placeholder/400/300" class="card-img-top service-image" alt="Семейная фотосессия">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Семейная фотосессия</h5>
-                                        <p class="card-text">Теплые и душевные снимки вашей семьи.</p>
-                                    </div>
-                                    <div class="card-footer">
-                                        <small class="text-muted">от 5000 руб.</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <input type="hidden" name="service" id="selectedService" value="{{ data.service|default('') }}" required>
-                    </div>
-                </div>
-
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <h3 class="border-bottom pb-2 mb-4">3. Выберите фотографа</h3>
-                        <div class="row row-cols-1 row-cols-md-3 g-4 mb-3">
-                            <div class="col">
-                                <div class="card photographer-card h-100" data-photographer="Александр Петров">
-                                    <img src="/api/placeholder/400/300" class="card-img-top photographer-image" alt="Александр Петров">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Александр Петров</h5>
-                                        <p class="card-text">Опыт работы более 10 лет. Специализация: портретная и свадебная фотография.</p>
-                                    </div>
-                                    <div class="card-footer d-flex justify-content-between align-items-center">
-                                        <small class="text-muted">Рейтинг: 4.9</small>
-                                        <div>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="card photographer-card h-100" data-photographer="Мария Иванова">
-                                    <img src="/api/placeholder/400/300" class="card-img-top photographer-image" alt="Мария Иванова">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Мария Иванова</h5>
-                                        <p class="card-text">Креативный подход к семейным фотосессиям. Умеет найти подход к детям.</p>
-                                    </div>
-                                    <div class="card-footer d-flex justify-content-between align-items-center">
-                                        <small class="text-muted">Рейтинг: 4.8</small>
-                                        <div>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-half text-warning"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="card photographer-card h-100" data-photographer="Дмитрий Соколов">
-                                    <img src="/api/placeholder/400/300" class="card-img-top photographer-image" alt="Дмитрий Соколов">
-                                    <div class="card-body">
-                                        <h5 class="card-title">Дмитрий Соколов</h5>
-                                        <p class="card-text">Мастер художественной фотографии. Создает уникальные концептуальные снимки.</p>
-                                    </div>
-                                    <div class="card-footer d-flex justify-content-between align-items-center">
-                                        <small class="text-muted">Рейтинг: 4.7</small>
-                                        <div>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-half text-warning"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <input type="hidden" name="photographer" id="selectedPhotographer" value="{{ data.photographer|default('') }}" required>
-                    </div>
-                </div>
-
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <h3 class="border-bottom pb-2 mb-4">4. Выберите дату</h3>
-                        <div class="mb-3">
-                            <label for="datePicker" class="form-label">Дата фотосессии</label>
-                            <input type="date" class="form-control" id="datePicker" name="date" value="{{ data.date|default('') }}" required min="{{ 'now'|date('Y-m-d') }}">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="alert alert-info mb-4">
-                            <i class="bi bi-info-circle-fill me-2"></i> Текущий режим хранения: <strong>{{ storageType == 'db' ? 'База данных' : 'CSV-файлы' }}</strong>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-calendar-check"></i> Забронировать фотосессию
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <button type="submit" class="form-button-custom">Применить</button>
             </form>
         </div>
+
+        {% if errors is defined and errors is not empty %}
+            <div class="errors-custom">
+                <strong>Обнаружены ошибки:</strong>
+                <ul>
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <form action="{{ path('booking_form_submit') }}" method="POST" autocomplete="off">
+            <div>
+                <label for="name" class="form-label-custom">Имя</label>
+                <input type="text" name="name" id="name" class="form-input-custom" value="{{ data.name | default('') }}" required>
+            </div>
+
+            <div>
+                <label for="service" class="form-label-custom">Услуга</label>
+                <select name="service" id="service" class="form-select-custom" required>
+                    <option value="">Выберите услугу</option>
+                    {% for service_item in availableServices %}
+                        <option value="{{ service_item }}" {{ (data.service | default('') == service_item) ? 'selected' : '' }}>
+                            {{ service_item }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="photographer" class="form-label-custom">Фотограф</label>
+                <select name="photographer" id="photographer" class="form-select-custom" required>
+                    <option value="">Выберите фотографа</option>
+                    {% for photographer_item in availablePhotographers %}
+                        <option value="{{ photographer_item }}" {{ (data.photographer | default('') == photographer_item) ? 'selected' : '' }}>
+                            {{ photographer_item }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="date" class="form-label-custom">Дата</label>
+                <input type="date" name="date" id="date" class="form-input-custom" value="{{ data.date | default('') }}" required min="{{ "now"|date("Y-m-d") }}">
+            </div>
+
+            <button type="submit" class="form-button-custom">Записаться</button>
+        </form>
+
+        <div class="form-nav-links">
+            <a href="{{ path('booking_list') }}">Просмотр записей</a>
+            {% if storageType == 'csv' %} {# Условие как в вашем PHP-файле, только для CSV #}
+                <a href="{{ path('booking_migrate_data') }}">Мигрировать данные в БД</a>
+            {% endif %}
+        </div>
     </div>
-{% endblock %}
-
-{% block javascripts %}
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Инициализация выбора даты
-            flatpickr("#datePicker", {
-                minDate: "today",
-                dateFormat: "Y-m-d"
-            });
-
-            // Установка выбранной услуги если она уже была выбрана
-            const selectedService = document.getElementById('selectedService').value;
-            if (selectedService) {
-                document.querySelector(`.service-card[data-service="${selectedService}"]`)?.classList.add('selected');
-            }
-
-            // Установка выбранного фотографа если он уже был выбран
-            const selectedPhotographer = document.getElementById('selectedPhotographer').value;
-            if (selectedPhotographer) {
-                document.querySelector(`.photographer-card[data-photographer="${selectedPhotographer}"]`)?.classList.add('selected');
-            }
-
-            // Обработка нажатия на карточку услуги
-            document.querySelectorAll('.service-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    // Убрать выделение со всех карточек
-                    document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
-                    // Выделить текущую карточку
-                    this.classList.add('selected');
-                    // Установить значение в скрытое поле
-                    document.getElementById('selectedService').value = this.dataset.service;
-                });
-            });
-
-            // Обработка нажатия на карточку фотографа
-            document.querySelectorAll('.photographer-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    // Убрать выделение со всех карточек
-                    document.querySelectorAll('.photographer-card').forEach(c => c.classList.remove('selected'));
-                    // Выделить текущую карточку
-                    this.classList.add('selected');
-                    // Установить значение в скрытое поле
-                    document.getElementById('selectedPhotographer').value = this.dataset.photographer;
-                });
-            });
-
-            // Валидация формы перед отправкой
-            document.getElementById('bookingForm').addEventListener('submit', function(e) {
-                const service = document.getElementById('selectedService').value;
-                const photographer = document.getElementById('selectedPhotographer').value;
-                const date = document.getElementById('datePicker').value;
-                const name = document.getElementById('name').value;
-
-                if (!service || !photographer || !date || !name) {
-                    e.preventDefault();
-                    alert('Пожалуйста, заполните все поля формы');
-                }
-            });
-        });
-    </script>
 {% endblock %}

@@ -1,0 +1,294 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Просмотр записей - {{ parent() }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f8;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .container {
+            max-width: 960px; /* Соответствует .container в вашем PHP */
+            margin: 50px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 40px;
+        }
+
+        h1.page-title { /* Добавлен класс для h1, чтобы не конфликтовать с base.html.twig */
+            margin-bottom: 20px;
+            font-size: 28px;
+            color: #222;
+        }
+        /* Навигация уже есть в _navbar.html.twig, здесь только информация о хранилище */
+        .storage-info-custom {
+            font-size: 14px;
+            color: #666;
+            text-align: right; /* Для соответствия вашему PHP */
+            margin-bottom: 20px;
+        }
+
+        .filter-panel {
+            background: #fafafa;
+            border: 1px solid #e0e0e5;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .filter-panel h3 {
+            margin-top: 0;
+            font-size: 20px;
+            color: #444;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+        }
+
+        .filter-group label {
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .filter-group input[type="text"],
+        .filter-group input[type="date"],
+        .filter-group select {
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%; /* Bootstrap-like behavior */
+        }
+
+        .filter-row { /* Для размещения элементов фильтра в строку */
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px; /* Расстояние между элементами */
+            margin-bottom: 15px;
+        }
+        .filter-row .filter-group {
+            flex: 1 1 200px; /* Базовая ширина, позволяет переноситься */
+            margin-bottom: 0; /* Убираем нижний отступ у группы */
+        }
+        .filter-row .filter-group.date-filter {
+            max-width: 220px; /* Для полей дат */
+        }
+
+
+        .filter-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px; /* Отступ сверху для кнопок */
+        }
+
+        .apply-button,
+        .reset-button,
+        .action-button { /* Общий класс для кнопок действий */
+            background-color: #6a4c93;
+            color: #fff;
+            text-decoration: none;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: inline-block; /* Для корректного отображения ссылок как кнопок */
+        }
+
+        .apply-button:hover,
+        .action-button:hover {
+            background-color: #593b7a;
+        }
+
+        .reset-button {
+            background-color: transparent;
+            color: #6a4c93;
+            padding: 10px 18px;
+            border: 1px solid #6a4c93; /* Добавим границу для лучшего вида */
+        }
+
+        .reset-button:hover {
+            color: #593b7a;
+            background-color: rgba(105, 73, 146, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 12px;
+            background: #f0f0f5;
+            font-weight: 600;
+            font-size: 15px;
+            border-bottom: 2px solid #e0e0e5;
+        }
+
+        tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e5;
+            font-size: 14px;
+        }
+
+        .no-records {
+            text-align: center;
+            color: #777;
+            padding: 30px 0;
+            font-size: 16px;
+            border: 1px dashed #ccc; /* Визуальное выделение */
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .actions-footer { /* Переименовал класс, чтобы не конфликтовать */
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px; /* Добавлен отступ */
+        }
+        .report-actions {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .report-actions span {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="container"> {# Этот div .container здесь, чтобы не дублировать с base.html.twig #}
+        <h1 class="page-title">Просмотр записей</h1>
+
+        <div class="storage-info-custom">
+            Хранилище: <strong>{{ storageType == 'db' ? 'База данных' : 'CSV файл' }}</strong>
+        </div>
+
+        <div class="filter-panel">
+            <h3>Фильтры</h3>
+            <form method="get" action="{{ path('booking_list') }}">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="filter_name">Имя</label>
+                        <input type="text" id="filter_name" name="filter_name" value="{{ filters.name | default('') }}">
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter_service">Услуга</label>
+                        <select id="filter_service" name="filter_service">
+                            <option value="">Все услуги</option>
+                            {% for service_item in availableServices %}
+                                <option value="{{ service_item }}" {{ (filters.service | default('') == service_item) ? 'selected' : '' }}>
+                                    {{ service_item }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filter_photographer">Фотограф</label>
+                        <select id="filter_photographer" name="filter_photographer">
+                            <option value="">Все фотографы</option>
+                            {% for photographer_item in availablePhotographers %}
+                                <option value="{{ photographer_item }}" {{ (filters.photographer | default('') == photographer_item) ? 'selected' : '' }}>
+                                    {{ photographer_item }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <div class="filter-group date-filter">
+                        <label for="filter_date_from">Дата от</label>
+                        <input type="date" id="filter_date_from" name="filter_date_from" value="{{ filters.date_from | default('') }}">
+                    </div>
+                    <div class="filter-group date-filter">
+                        <label for="filter_date_to">Дата до</label>
+                        <input type="date" id="filter_date_to" name="filter_date_to" value="{{ filters.date_to | default('') }}">
+                    </div>
+                </div>
+                <div class="filter-buttons">
+                    <button type="submit" class="apply-button">Применить фильтры</button>
+                    <a href="{{ path('booking_list') }}" class="reset-button">Сбросить</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="report-actions">
+            <span>Отчеты (на основе текущих фильтров):</span>
+            <a href="{{ path('booking_report_pdf', app.request.query.all) }}" class="action-button" style="background-color: #dc3545;">PDF</a> {# Красный для PDF #}
+            <a href="{{ path('booking_report_excel', app.request.query.all) }}" class="action-button" style="background-color: #198754;">Excel</a> {# Зеленый для Excel #}
+            <a href="{{ path('booking_report_csv', app.request.query.all) }}" class="action-button" style="background-color: #0dcaf0;">CSV</a> {# Голубой для CSV #}
+        </div>
+
+
+        {% if bookings is empty %}
+            <div class="no-records">
+                {% set hasActiveFilters = false %}
+                {% for key, value in filters %}
+                    {% if value is not empty %}
+                        {% set hasActiveFilters = true %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if hasActiveFilters %}
+                    По заданным критериям записей не найдено.
+                {% else %}
+                    Записей не найдено.
+                {% endif %}
+            </div>
+        {% else %}
+            <table>
+                <thead>
+                <tr>
+                    {% if storageType == 'db' %}<th>ID</th>{% endif %}
+                    <th>Имя</th>
+                    <th>Услуга</th>
+                    <th>Фотограф</th>
+                    <th>Дата</th>
+                    {# В вашем PHP был столбец Дата создания только для DB, но Booking сущность не имеет createdAt сейчас #}
+                    {# Если бы было: #}
+                    {# {% if storageType == 'db' and booking.createdAt is defined %}<th>Дата создания</th>{% endif %} #}
+                </tr>
+                </thead>
+                <tbody>
+                {% for booking in bookings %}
+                    <tr>
+                        {% if storageType == 'db' %}<td>{{ booking.id | default('') }}</td>{% endif %}
+                        <td>{{ booking.name | default('') }}</td>
+                        <td>{{ booking.service | default('') }}</td>
+                        <td>{{ booking.photographer | default('') }}</td>
+                        <td>{{ booking.date | default('') }}</td>
+                        {# {% if storageType == 'db' and booking.createdAt is defined %}<td>{{ booking.createdAt | date('Y-m-d H:i:s') }}</td>{% endif %} #}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        <div class="actions-footer">
+            <a href="{{ path('booking_form_show') }}" class="action-button">Новая запись</a>
+            {% if storageType == 'csv' %}
+                <a href="{{ path('booking_migrate_data') }}" class="action-button" style="background-color: #ffc107; color: #000;">Мигрировать в БД</a> {# Желтый для миграции #}
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
