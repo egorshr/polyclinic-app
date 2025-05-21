@@ -17,9 +17,14 @@ class BookingRepository extends ServiceEntityRepository
         parent::__construct($registry, Booking::class);
     }
 
-    /**
-     * Сохраняет бронирование либо в БД (Doctrine), либо в CSV (по значению $storage)
-     */
+    public function getAllBookingsFromDb(): array
+    {
+        return $this->createQueryBuilder('b')
+            ->orderBy('b.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
     public function saveBooking(Booking $booking, string $storage = 'csv'): void
     {
         if ($storage === 'db') {
@@ -62,27 +67,21 @@ class BookingRepository extends ServiceEntityRepository
             $booking->getName(),
             $booking->getService(),
             $booking->getPhotographer(),
-            $booking->getDate()->format('Y-m-d'), // если у тебя DateTime
+            $booking->getDate()->format('Y-m-d'),
             $userId,
         ]);
 
         fclose($file);
     }
 
-    /**
-     * Получение бронирований из БД с фильтрами и по пользователю
-     * @param array $filters
-     * @param User|null $user
-     * @return Booking[]
-     */
     public function findByFilters(array $filters = [], ?User $user = null): array
     {
         $qb = $this->createQueryBuilder('b')
-            ->orderBy('b.createdAt', 'DESC');
+            ->orderBy('b.date', 'DESC');
 
         if ($user !== null) {
-            $qb->andWhere('b.user = :user')
-                ->setParameter('user', $user);
+            $qb->andWhere('b.userId = :userId')
+                ->setParameter('userId', $user->getId());
         }
 
         if (!empty($filters['name'])) {
@@ -114,12 +113,9 @@ class BookingRepository extends ServiceEntityRepository
     }
 
     /**
-     * Получение бронирований из CSV для конкретного пользователя с фильтрами
-     * @param array $filters
-     * @param User|null $user
-     * @return array
+     * Получение всех бронирований из CSV
      */
-    public function findFromCsv(array $filters = [], ?User $user = null): array
+    public function getAllBookingsFromCsv(array $filters = [], ?User $user = null): array
     {
         if ($user === null) {
             return [];

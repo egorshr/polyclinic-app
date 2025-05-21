@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use DateTimeInterface;
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
@@ -23,16 +25,19 @@ class Booking
     private string $photographer;
 
     #[ORM\Column(type: 'date')]
-    private \DateTimeInterface $date;
+    private DateTimeInterface $date;
 
     #[ORM\Column(type: 'integer')]
     private int $userId;
+
+    #[ORM\Column(type: 'datetime_immutable')]
+    private DateTimeImmutable $createdAt;
 
     public function __construct(
         string $name,
         string $service,
         string $photographer,
-        string $date, // строка формата 'YYYY-MM-DD'
+        string $date, // формат 'YYYY-MM-DD'
         int $userId
     ) {
         $this->name = $name;
@@ -40,6 +45,7 @@ class Booking
         $this->photographer = $photographer;
         $this->date = new \DateTime($date);
         $this->userId = $userId;
+        $this->createdAt = new DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -62,7 +68,7 @@ class Booking
         return $this->photographer;
     }
 
-    public function getDate(): \DateTimeInterface
+    public function getDate(): DateTimeInterface
     {
         return $this->date;
     }
@@ -72,9 +78,33 @@ class Booking
         return $this->userId;
     }
 
-    public function setName(string $name): void { $this->name = $name; }
-    public function setService(string $service): void { $this->service = $service; }
-    public function setPhotographer(string $photographer): void { $this->photographer = $photographer; }
-    public function setDate(\DateTimeInterface $date): void { $this->date = $date; }
-    public function setUserId(int $userId): void { $this->userId = $userId; }
+    public function getCreatedAt(): DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
+
+    public function setService(string $service): void
+    {
+        $this->service = $service;
+    }
+
+    public function setPhotographer(string $photographer): void
+    {
+        $this->photographer = $photographer;
+    }
+
+    public function setDate(DateTimeInterface $date): void
+    {
+        $this->date = $date;
+    }
+
+    public function setUserId(int $userId): void
+    {
+        $this->userId = $userId;
+    }
 }

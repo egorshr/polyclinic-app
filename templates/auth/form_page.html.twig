@@ -1,0 +1,14 @@
+
+{% extends 'base.html.twig' %}
+
+{% block title %}Форма пользователя{% endblock %}
+
+{% block body %}
+    <h1>Добро пожаловать, {{ app.session.get('username') }}!</h1>
+
+    <p>Это защищённая страница после входа в систему.</p>
+
+    <p>Ваша роль: {{ app.session.get('role')|join(', ') }}</p>
+
+    <a href="{{ path('logout') }}">Выйти</a>
+{% endblock %}

@@ -43,7 +43,7 @@ class AuthController extends AbstractController
             return $this->render('auth/login.html.twig', ['errors' => ['Введите логин и пароль']]);
         }
 
-        $user = $this->userRepository->findOneBy(['username' => $username]);
+        $user = $this->userRepository->getUserByUsername($username);
 
         if (!$user || !password_verify($password, $user->getPassword())) {
             return $this->render('auth/login.html.twig', ['errors' => ['Неверные учетные данные']]);
@@ -51,7 +51,7 @@ class AuthController extends AbstractController
 
         $this->session->set('user_id', $user->getId());
         $this->session->set('username', $user->getUsername());
-        $this->session->set('role', $user->getRole());
+        $this->session->set('role', $user->getRoles());
 
         return $this->redirectToRoute('form_page');
     }
@@ -61,6 +61,15 @@ class AuthController extends AbstractController
     {
         return $this->render('auth/register.html.twig', ['errors' => []]);
     }
+
+    #[Route('/form', name: 'form_page', methods: ['GET'])]
+    public function formPage(): Response
+    {
+        // Здесь можно отрисовать шаблон с формой или любой другой контент
+        return $this->render('auth/form_page.html.twig');
+    }
+
+
 
     #[Route('/register', name: 'register', methods: ['POST'])]
     public function register(Request $request): Response
@@ -86,9 +95,10 @@ class AuthController extends AbstractController
             $errors[] = "Пароли не совпадают";
         }
 
-        if ($this->userRepository->findOneBy(['username' => $username])) {
+        if ($this->userRepository->getUserByUsername($username)) {
             $errors[] = "Пользователь с таким логином уже существует";
         }
+
 
         if (!empty($errors)) {
             return $this->render('auth/register.html.twig', ['errors' => $errors]);

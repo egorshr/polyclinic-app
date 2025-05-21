@@ -16,6 +16,9 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{Request, Response, Session\SessionInterface};
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpFoundation\Cookie;
+
+
 
 class BookingController extends AbstractController
 {
@@ -32,7 +35,7 @@ class BookingController extends AbstractController
         $data = $request->request->all();
         $storageType = $request->cookies->get('storage_type', 'csv');
 
-        return $this->render('form.html.twig', compact('errors', 'data', 'storageType'));
+        return $this->render('booking/form.html.twig', compact('errors', 'data', 'storageType'));
     }
 
     #[Route('/form/submit', name: 'submit_form', methods: ['POST'])]
@@ -78,7 +81,7 @@ class BookingController extends AbstractController
         }
 
         if (!empty($errors)) {
-            return $this->render('form.html.twig', compact('errors', 'data', 'storageType'));
+            return $this->render('booking/bookings.html.twig', compact('errors', 'data', 'storageType'));
         }
 
         $booking = new Booking();
@@ -119,7 +122,7 @@ class BookingController extends AbstractController
     {
         $response = $this->redirectToRoute('booking_form');
         $type = $request->request->get('storage_type', 'csv');
-        $response->headers->setCookie(cookie('storage_type', $type, time() + 30 * 24 * 60 * 60));
+        $response->headers->setCookie(new Cookie('storage_type', $type, time() + 30 * 24 * 60 * 60));
         return $response;
     }
 
@@ -148,7 +151,7 @@ class BookingController extends AbstractController
         $availableServices = Service::getAvailableServices();
         $availablePhotographers = Photographer::getAvailablePhotographers();
 
-        return $this->render('bookings.html.twig', compact('bookings', 'availableServices', 'availablePhotographers'));
+        return $this->render('booking/bookings.html.twig', compact('bookings', 'availableServices', 'availablePhotographers'));
     }
 
     #[Route('/report/pdf', name: 'generate_pdf', methods: ['GET'])]
