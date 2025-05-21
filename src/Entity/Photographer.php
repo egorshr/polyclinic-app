@@ -2,11 +2,10 @@
 
 namespace App\Entity;
 
-use App\Repository\PhotographerRepository;
 use Doctrine\ORM\Mapping as ORM;
-use InvalidArgumentException;
 
-#[ORM\Entity(repositoryClass: PhotographerRepository::class)]
+#[ORM\Entity]
+#[ORM\Table(name: 'photographers')]
 class Photographer
 {
     #[ORM\Id]
@@ -19,10 +18,6 @@ class Photographer
 
     public function __construct(string $name)
     {
-        if (!in_array($name, self::getAvailablePhotographers(), true)) {
-            throw new InvalidArgumentException('Невалидный фотограф');
-        }
-
         $this->name = $name;
     }
 
@@ -36,12 +31,8 @@ class Photographer
         return $this->name;
     }
 
-    public static function getAvailablePhotographers(): array
+    public function setName(string $name): void
     {
-        return [
-            'Анна Иванова',
-            'Игорь Петров',
-            'Екатерина Смирнова',
-        ];
+        $this->name = $name;
     }
 }

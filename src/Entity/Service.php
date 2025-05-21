@@ -2,11 +2,10 @@
 
 namespace App\Entity;
 
-use App\Repository\ServiceRepository;
 use Doctrine\ORM\Mapping as ORM;
-use InvalidArgumentException;
 
-#[ORM\Entity(repositoryClass: ServiceRepository::class)]
+#[ORM\Entity]
+#[ORM\Table(name: 'services')]
 class Service
 {
     #[ORM\Id]
@@ -19,10 +18,6 @@ class Service
 
     public function __construct(string $name)
     {
-        if (!in_array($name, self::getAvailableServices(), true)) {
-            throw new InvalidArgumentException('Невалидная услуга');
-        }
-
         $this->name = $name;
     }
 
@@ -36,13 +31,8 @@ class Service
         return $this->name;
     }
 
-    public static function getAvailableServices(): array
+    public function setName(string $name): void
     {
-        return [
-            'Портретная съёмка',
-            'Семейная фотосессия',
-            'Съёмка на документы',
-            'Творческая съёмка',
-        ];
+        $this->name = $name;
     }
 }

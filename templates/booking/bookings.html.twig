@@ -1,0 +1,124 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Просмотр записей{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <h1>Просмотр записей</h1>
+        <div class="navigation">
+            <div>
+                <a href="{{ path('form') }}">Форма записи</a>
+                <a href="{{ path('bookings') }}">Все записи</a>
+                {% if storageType == 'csv' %}
+                    <a href="{{ path('migrate') }}">Миграция данных</a>
+                {% endif %}
+            </div>
+            <div class="storage-info">
+                Хранилище: {{ storageType == 'db' ? 'База данных' : 'CSV файл' }}
+            </div>
+            <div class="user-info">
+                {% if isLoggedIn %}
+                    <span>Пользователь: {{ username|e }} ({{ userRole|e }})</span>
+                    <a href="{{ path('logout') }}">Выйти</a>
+                {% else %}
+                    <a href="{{ path('login') }}">Войти</a>
+                    <a href="{{ path('register') }}">Регистрация</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="filter-panel">
+            <h3>Фильтры</h3>
+            <form method="get" action="{{ path('bookings') }}">
+                <input type="hidden" name="route" value="bookings">
+                <div class="filter-group">
+                    <label for="filter_name">Имя</label>
+                    <input type="text" id="filter_name" name="filter_name" value="{{ filters.name|default('') }}">
+                </div>
+                <div class="filter-group">
+                    <label for="filter_service">Услуга</label>
+                    <select id="filter_service" name="filter_service">
+                        <option value="">Все услуги</option>
+                        {% for service in availableServices %}
+                            <option value="{{ service }}" {% if filters.service is defined and filters.service == service %}selected{% endif %}>{{ service }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filter_photographer">Фотограф</label>
+                    <select id="filter_photographer" name="filter_photographer">
+                        <option value="">Все фотографы</option>
+                        {% for photographer in availablePhotographers %}
+                            <option value="{{ photographer }}" {% if filters.photographer is defined and filters.photographer == photographer %}selected{% endif %}>{{ photographer }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group" style="max-width: 200px;">
+                    <label for="filter_date_from">Дата от</label>
+                    <input type="date" id="filter_date_from" name="filter_date_from" value="{{ filters.date_from|default('') }}">
+                </div>
+                <div class="filter-group" style="max-width: 200px;">
+                    <label for="filter_date_to">Дата до</label>
+                    <input type="date" id="filter_date_to" name="filter_date_to" value="{{ filters.date_to|default('') }}">
+                </div>
+                <div class="filter-buttons">
+                    <button type="submit" class="apply-button">Применить фильтры</button>
+                    <a href="{{ path('bookings') }}" class="reset-button">Сбросить</a>
+                </div>
+            </form>
+        </div>
+
+        {% if bookings is empty %}
+            <div class="no-records">
+                {% if filters|filter(v => v is not empty) is not empty %}
+                    По заданным критериям записей не найдено
+                {% else %}
+                    Записей не найдено
+                {% endif %}
+            </div>
+        {% else %}
+            <table>
+                <thead>
+                <tr>
+                    {% if storageType == 'db' %}
+                        <th>ID</th>
+                    {% endif %}
+                    <th>Имя</th>
+                    <th>Услуга</th>
+                    <th>Фотограф</th>
+                    <th>Дата</th>
+                    {% if storageType == 'db' %}
+                        <th>Дата создания</th>
+                    {% endif %}
+                </tr>
+                </thead>
+                <tbody>
+                {% for booking in bookings %}
+                    <tr>
+                        {% if storageType == 'db' %}
+                            <td>{{ booking.id|default('') }}</td>
+                        {% endif %}
+                        <td>{{ booking.name|default('') }}</td>
+                        <td>{{ booking.service|default('') }}</td>
+                        <td>{{ booking.photographer|default('') }}</td>
+                        <td>{{ booking.date|default('') }}</td>
+                        {% if storageType == 'db' %}
+                            <td>{{ booking.created_at|default('') }}</td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        <div class="actions">
+            <a href="{{ path('form') }}" class="button">Новая запись</a>
+            {% if storageType == 'csv' %}
+                <a href="{{ path('migrate') }}" class="button">Мигрировать в БД</a>
+            {% endif %}
+            <a href="{{ path('generate_pdf') }}" class="button">PDF</a>
+            <a href="{{ path('generate_excel') }}" class="button">Excel</a>
+            <a href="{{ path('generate_csv') }}" class="button">CSV</a>
+        </div>
+    </div>
+{% endblock %}

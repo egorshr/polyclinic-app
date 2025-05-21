@@ -3,46 +3,86 @@
 namespace App\Repository;
 
 use App\Entity\Booking;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Exception;
 
-/**
- * @extends ServiceEntityRepository<Booking>
- */
 class BookingRepository extends ServiceEntityRepository
 {
-    private const CSV_FILE_PATH = __DIR__ . '/../../var/csv/bookings_%d.csv';
+    private const CSV_FILE_PATH = __DIR__ . '/../../data/bookings_%d.csv';
 
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Booking::class);
     }
 
-    public function save(Booking $booking, bool $flush = false): void
+    /**
+     * Сохраняет бронирование либо в БД (Doctrine), либо в CSV (по значению $storage)
+     */
+    public function saveBooking(Booking $booking, string $storage = 'csv'): void
     {
-        $this->getEntityManager()->persist($booking);
-
-        if ($flush) {
-            $this->getEntityManager()->flush();
+        if ($storage === 'db') {
+            $this->saveToDatabase($booking);
+        } else {
+            $this->saveToCsv($booking);
         }
     }
 
-    public function remove(Booking $booking, bool $flush = false): void
+    private function saveToDatabase(Booking $booking): void
     {
-        $this->getEntityManager()->remove($booking);
+        $em = $this->getEntityManager();
 
-        if ($flush) {
-            $this->getEntityManager()->flush();
+        try {
+            $em->persist($booking);
+            $em->flush();
+        } catch (Exception $e) {
+            throw new Exception('Ошибка при сохранении в базу данных: ' . $e->getMessage());
         }
     }
 
-    public function getAllBookings(array $filters = [], ?int $userId = null): array
+    private function saveToCsv(Booking $booking): void
     {
-        $qb = $this->createQueryBuilder('b');
+        $userId = $booking->getUserId();
+        $filePath = sprintf(self::CSV_FILE_PATH, $userId);
+        $isNewFile = !file_exists($filePath);
 
-        if ($userId !== null) {
-            $qb->andWhere('b.userId = :userId')
-                ->setParameter('userId', $userId);
+        $dir = dirname($filePath);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+
+        $file = fopen($filePath, 'a');
+
+        if ($isNewFile) {
+            fputcsv($file, ['name', 'service', 'photographer', 'date', 'user_id']);
+        }
+
+        fputcsv($file, [
+            $booking->getName(),
+            $booking->getService(),
+            $booking->getPhotographer(),
+            $booking->getDate()->format('Y-m-d'), // если у тебя DateTime
+            $userId,
+        ]);
+
+        fclose($file);
+    }
+
+    /**
+     * Получение бронирований из БД с фильтрами и по пользователю
+     * @param array $filters
+     * @param User|null $user
+     * @return Booking[]
+     */
+    public function findByFilters(array $filters = [], ?User $user = null): array
+    {
+        $qb = $this->createQueryBuilder('b')
+            ->orderBy('b.createdAt', 'DESC');
+
+        if ($user !== null) {
+            $qb->andWhere('b.user = :user')
+                ->setParameter('user', $user);
         }
 
         if (!empty($filters['name'])) {
@@ -70,97 +110,80 @@ class BookingRepository extends ServiceEntityRepository
                 ->setParameter('date_to', $filters['date_to']);
         }
 
-        $qb->orderBy('b.date', 'DESC');
-
         return $qb->getQuery()->getResult();
     }
 
-    public function saveToCsv(Booking $booking): void
+    /**
+     * Получение бронирований из CSV для конкретного пользователя с фильтрами
+     * @param array $filters
+     * @param User|null $user
+     * @return array
+     */
+    public function findFromCsv(array $filters = [], ?User $user = null): array
     {
-        $filePath = sprintf(self::CSV_FILE_PATH, $booking->getUserId());
-        $isNewFile = !file_exists($filePath);
-
-        $dir = dirname($filePath);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0777, true);
-        }
-
-        $file = fopen($filePath, 'a');
-
-        if ($isNewFile) {
-            fputcsv($file, ['name', 'service', 'photographer', 'date', 'user_id']);
-        }
-
-        fputcsv($file, [
-            $booking->getName(),
-            $booking->getService(),
-            $booking->getPhotographer(),
-            $booking->getDate()->format('Y-m-d'), // форматируем дату
-            $booking->getUserId()
-        ]);
-
-        fclose($file);
-    }
-
-    public function getAllBookingsFromCsv(array $filters = [], ?int $userId = null): array
-    {
-        if ($userId === null) {
+        if ($user === null) {
             return [];
         }
 
+        $userId = $user->getId();
         $filePath = sprintf(self::CSV_FILE_PATH, $userId);
+
         if (!file_exists($filePath)) {
             return [];
         }
 
         $file = fopen($filePath, 'r');
-        fgetcsv($file);
+        fgetcsv($file); // пропустить заголовок
 
         $bookings = [];
+
         while (($data = fgetcsv($file)) !== false) {
-            if (count($data) >= 5) {
-                $booking = [
-                    'name' => $data[0],
-                    'service' => $data[1],
-                    'photographer' => $data[2],
-                    'date' => $data[3],
-                    'user_id' => (int)($data[4] ?? $userId),
-                ];
-
-                $match = true;
-
-                if (!empty($filters['name']) &&
-                    stripos($booking['name'], $filters['name']) === false) {
-                    $match = false;
-                }
-
-                if (!empty($filters['service']) &&
-                    $booking['service'] !== $filters['service']) {
-                    $match = false;
-                }
-
-                if (!empty($filters['photographer']) &&
-                    $booking['photographer'] !== $filters['photographer']) {
-                    $match = false;
-                }
-
-                if (!empty($filters['date_from']) &&
-                    $booking['date'] < $filters['date_from']) {
-                    $match = false;
-                }
-
-                if (!empty($filters['date_to']) &&
-                    $booking['date'] > $filters['date_to']) {
-                    $match = false;
-                }
-
-                if ($match) {
-                    $bookings[] = $booking;
-                }
+            if (count($data) < 5) {
+                continue;
             }
+
+            $booking = [
+                'name' => $data[0],
+                'service' => $data[1],
+                'photographer' => $data[2],
+                'date' => $data[3],
+                'user_id' => (int)$data[4],
+            ];
+
+            if (!$this->matchesFilters($booking, $filters)) {
+                continue;
+            }
+
+            $bookings[] = $booking;
         }
 
         fclose($file);
+
         return array_reverse($bookings);
+    }
+
+    private function matchesFilters(array $booking, array $filters): bool
+    {
+        if (!empty($filters['name']) && stripos($booking['name'], $filters['name']) === false) {
+            return false;
+        }
+
+        if (!empty($filters['service']) && $booking['service'] !== $filters['service']) {
+            return false;
+        }
+
+        if (!empty($filters['photographer']) && $booking['photographer'] !== $filters['photographer']) {
+            return false;
+        }
+
+        if (!empty($filters['date_from']) && $booking['date'] < $filters['date_from']) {
+            return false;
+        }
+
+        if (!empty($filters['date_to']) && $booking['date'] > $filters['date_to']) {
+            return false;
+        }
+
+        return true;
     }
 }

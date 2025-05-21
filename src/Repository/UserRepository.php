@@ -1,30 +1,26 @@
 <?php
-
+// src/Repository/UserRepository.php
 namespace App\Repository;
 
 use App\Entity\User;
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\ORM\Exception\ORMException;
-use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 
-/**
- * @extends ServiceEntityRepository<User>
- */
-class UserRepository extends ServiceEntityRepository
+class UserRepository
 {
-    public function __construct(ManagerRegistry $registry)
+    private EntityManagerInterface $em;
+
+    public function __construct(EntityManagerInterface $em)
     {
-        parent::__construct($registry, User::class);
+        $this->em = $em;
     }
 
     public function createUser(User $user): bool
     {
-        $em = $this->getEntityManager();
-
         try {
-            $em->persist($user);
-            $em->flush();
+            $this->em->persist($user);
+            $this->em->flush();
+
             return true;
         } catch (Exception) {
             return false;
@@ -33,11 +29,12 @@ class UserRepository extends ServiceEntityRepository
 
     public function getUserByUsername(string $username): ?User
     {
-        return $this->findOneBy(['username' => $username]);
+        return $this->em->getRepository(User::class)->findOneBy(['username' => $username]);
     }
 
     public function getUserById(int $id): ?User
     {
-        return $this->find($id);
+        return $this->em->getRepository(User::class)->find($id);
     }
 }
+

@@ -3,77 +3,46 @@
 namespace App\Controller;
 
 use App\Entity\Booking;
-use App\Form\BookingFormType;
+use App\Entity\Photographer;
+use App\Entity\Service;
 use App\Repository\BookingRepository;
 use App\Service\DataMigrator;
-use App\Service\StorageService;
-use DateTime;
+use Exception;
+use InvalidArgumentException;
+use JetBrains\PhpStorm\NoReturn;
 use Mpdf\Mpdf;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\{Request, Response, Session\SessionInterface};
+use Symfony\Component\Routing\Attribute\Route;
 
 class BookingController extends AbstractController
 {
-    private BookingRepository $repository;
-    private DataMigrator $dataMigrator;
-    private StorageService $storageService;
-
-    public function __construct(BookingRepository $repository, DataMigrator $dataMigrator, StorageService $storageService)
+    public function __construct(
+        private readonly BookingRepository $repository
+    )
     {
-        $this->repository = $repository;
-        $this->dataMigrator = $dataMigrator;
-        $this->storageService = $storageService;
     }
 
-    #[Route('/booking', name: 'booking_form')]
-    public function bookingForm(Request $request): Response
+    #[Route('/form', name: 'booking_form', methods: ['GET'])]
+    public function showForm(Request $request): Response
     {
-        $user = $this->getUser();
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
-        }
-
-        $booking = new Booking();
-        $form = $this->createForm(BookingFormType::class, $booking);
-
-        $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
-            $booking->setUserId($user->getId());
-
-            $storageType = $this->storageService->getStorageType($request);
-
-            if ($storageType === 'db') {
-                $this->repository->save($booking, true);
-            } else {
-                $this->repository->saveToCsv($booking);
-            }
-
-            $this->addFlash('success', 'Бронирование успешно создано!');
-            return $this->redirectToRoute('booking_success');
-        }
-
-        return $this->render('booking/form.html.twig', [
-            'bookingForm' => $form->createView(),
-            'storage_type' => $this->storageService->getStorageType($request),
-        ]);
-    }
-
-    #[Route('/booking/submit', name: 'booking_submit', methods: ['POST'])]
-    public function submitForm(Request $request): Response
-    {
-        $data = $request->request->all();
         $errors = [];
+        $data = $request->request->all();
+        $storageType = $request->cookies->get('storage_type', 'csv');
+
+        return $this->render('form.html.twig', compact('errors', 'data', 'storageType'));
+    }
+
+    #[Route('/form/submit', name: 'submit_form', methods: ['POST'])]
+    public function submitForm(Request $request, SessionInterface $session): Response
+    {
+        $errors = [];
+        $data = $request->request->all();
         $storageType = $request->cookies->get('storage_type', 'csv');
 
         $name = trim($data['name'] ?? '');
-
-        // Валидация имени
         if (empty($name)) {
             $errors[] = "Имя не может быть пустым.";
         } elseif (mb_strlen($name) < 2) {
@@ -82,237 +51,208 @@ class BookingController extends AbstractController
             $errors[] = "Имя может содержать только буквы, пробелы и дефисы.";
         }
 
-        // Валидация даты
-        $dateStr = $data['date'] ?? '';
-        $dateObj = DateTime::createFromFormat('Y-m-d', $dateStr);
-        if (!$dateObj || $dateObj->format('Y-m-d') !== $dateStr) {
+        $date = $data['date'] ?? '';
+        if (empty($date)) {
+            $errors[] = "Дата не может быть пустой.";
+        } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             $errors[] = "Неверный формат даты.";
-        } elseif ($dateObj < new DateTime('today')) {
+        } elseif (strtotime($date) < strtotime(date('Y-m-d'))) {
             $errors[] = "Дата не может быть в прошлом.";
         }
 
-        $serviceName = $data['service'] ?? '';
-        $photographerName = $data['photographer'] ?? '';
-
-        if (empty($serviceName)) {
-            $errors[] = "Услуга не выбрана.";
+        try {
+            $service = new Service($data['service'] ?? '');
+        } catch (InvalidArgumentException $e) {
+            $errors[] = $e->getMessage();
         }
-        if (empty($photographerName)) {
-            $errors[] = "Фотограф не выбран.";
+
+        try {
+            $photographer = new Photographer($data['photographer'] ?? '');
+        } catch (InvalidArgumentException $e) {
+            $errors[] = $e->getMessage();
+        }
+
+        $userId = $session->get('user_id', 0);
+        if ($userId <= 0) {
+            $errors[] = "Вы не авторизованы.";
         }
 
         if (!empty($errors)) {
-            return $this->render('booking/form.html.twig', [
-                'errors' => $errors,
-                'data' => $data,
-                'storage_type' => $storageType,
-            ]);
-        }
-
-        $user = $this->getUser();
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
+            return $this->render('form.html.twig', compact('errors', 'data', 'storageType'));
         }
 
         $booking = new Booking();
-        $booking->setName($name);
-        $booking->setService($serviceName);
-        $booking->setPhotographer($photographerName);
-        $booking->setDate($dateObj);
-        $booking->setUserId($user->getId());
 
-        if ($storageType === 'db') {
-            $this->repository->save($booking, true);
-        } else {
-            $this->repository->saveToCsv($booking);
-        }
+        $this->repository->saveBooking($booking, $storageType);
 
         return $this->redirectToRoute('booking_success');
     }
 
-    #[Route('/booking/success', name: 'booking_success')]
-    public function bookingSuccess(): Response
+    #[Route('/form/success', name: 'booking_success', methods: ['GET'])]
+    public function showSuccess(): Response
     {
-        return $this->render('booking/success.html.twig');
+        return $this->render('success.html.twig');
     }
 
-    #[Route('/booking/migrate', name: 'booking_migrate')]
-    public function migrateData(Request $request): Response
+    #[Route('/migrate', name: 'migrate_data', methods: ['GET'])]
+    public function migrateData(SessionInterface $session): Response
     {
-        $user = $this->getUser();
-
-        if (!$user) {
-            $this->addFlash('error', 'Необходимо авторизоваться для миграции данных');
-            return $this->redirectToRoute('app_login');
-        }
-
-        $direction = $request->query->get('direction', 'csv_to_db');
-
         try {
-            if ($direction === 'csv_to_db') {
-                $migratedCount = $this->dataMigrator->migrateFromCsvToDb($user->getId());
-                $this->addFlash('success', "Успешно мигрировано записей из CSV в БД: {$migratedCount}");
-            } else {
-                $migratedCount = $this->dataMigrator->migrateFromDbToCsv($user->getId());
-                $this->addFlash('success', "Успешно мигрировано записей из БД в CSV: {$migratedCount}");
+            $userId = $session->get('user_id', 0);
+            if ($userId <= 0) {
+                throw new Exception("Необходимо авторизоваться для миграции данных");
             }
-        } catch (\Exception $e) {
-            $this->addFlash('error', 'Ошибка при миграции: ' . $e->getMessage());
+
+            $migratedCount = DataMigrator::migrateFromCsvToDb($userId);
+            $message = "Успешно мигрировано записей: $migratedCount";
+        } catch (Exception $e) {
+            $message = "Ошибка при миграции данных: " . $e->getMessage();
         }
 
-        return $this->redirectToRoute('booking_index');
+        $storageType = $_COOKIE['storage_type'] ?? 'csv';
+        return $this->render('migrate.html.twig', compact('message', 'storageType'));
     }
 
-    #[Route('/bookings', name: 'booking_index')]
-    public function index(Request $request): Response
+    #[Route('/set-storage', name: 'set_storage', methods: ['POST'])]
+    #[NoReturn]
+    public function setStorageType(Request $request): Response
     {
-        $filters = $request->query->all();
-        $storageType = $request->cookies->get('storage_type', 'csv');
-
-        $user = $this->getUser();
-
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
-        }
-
-        if ($storageType === 'db') {
-            $bookings = $this->repository->getAllBookings($filters, $user->getId());
-        } else {
-            $bookings = $this->repository->getAllBookingsFromCsv($filters, $user->getId());
-        }
-
-        return $this->render('booking/list.html.twig', [
-            'bookings' => $bookings,
-            'storage_type' => $storageType,
-            'filters' => $filters,
-        ]);
-    }
-
-    #[Route('/storage/toggle', name: 'storage_toggle')]
-    public function toggleStorage(Request $request): Response
-    {
-        $currentStorage = $request->cookies->get('storage_type', 'csv');
-        $newStorage = $currentStorage === 'csv' ? 'db' : 'csv';
-
-        $response = $this->redirectToRoute('booking_index');
-        $this->storageService->setStorageType($response, $newStorage);
-
-        $this->addFlash('info', 'Тип хранилища изменен на ' . ($newStorage === 'db' ? 'базу данных' : 'CSV файл'));
-
+        $response = $this->redirectToRoute('booking_form');
+        $type = $request->request->get('storage_type', 'csv');
+        $response->headers->setCookie(cookie('storage_type', $type, time() + 30 * 24 * 60 * 60));
         return $response;
     }
 
-    #[Route('/bookings/export/pdf', name: 'booking_export_pdf')]
-    public function exportPdf(Request $request): Response
+    #[Route('/bookings', name: 'show_bookings', methods: ['GET'])]
+    public function showBookings(Request $request, SessionInterface $session): Response
     {
-        $user = $this->getUser();
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
-        }
-
         $storageType = $request->cookies->get('storage_type', 'csv');
-        $filters = $request->query->all();
+        $userId = $session->get('user_id', 0);
 
-        if ($storageType === 'db') {
-            $bookings = $this->repository->getAllBookings($filters, $user->getId());
-        } else {
-            $bookings = $this->repository->getAllBookingsFromCsv($filters, $user->getId());
+        if ($userId <= 0) {
+            return $this->redirectToRoute('login');
         }
 
-        $mpdf = new Mpdf();
-        $html = $this->renderView('booking/report_pdf.html.twig', [
-            'bookings' => $bookings,
-        ]);
-        $mpdf->WriteHTML($html);
+        $filters = [
+            'name' => $request->query->get('filter_name', ''),
+            'service' => $request->query->get('filter_service', ''),
+            'photographer' => $request->query->get('filter_photographer', ''),
+            'date_from' => $request->query->get('filter_date_from', ''),
+            'date_to' => $request->query->get('filter_date_to', '')
+        ];
 
-        return new Response($mpdf->Output('bookings.pdf', 'S'), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="bookings.pdf"',
-        ]);
+        $bookings = $storageType === 'db'
+            ? $this->repository->getAllBookingsFromDb($filters, $userId)
+            : $this->repository->getAllBookingsFromCsv($filters, $userId);
+
+        $availableServices = Service::getAvailableServices();
+        $availablePhotographers = Photographer::getAvailablePhotographers();
+
+        return $this->render('bookings.html.twig', compact('bookings', 'availableServices', 'availablePhotographers'));
     }
 
-    #[Route('/bookings/export/excel', name: 'booking_export_excel')]
-    public function exportExcel(Request $request): Response
+    #[Route('/report/pdf', name: 'generate_pdf', methods: ['GET'])]
+    #[NoReturn]
+    public function generatePdfReport(Request $request, SessionInterface $session): Response
     {
-        $user = $this->getUser();
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
+        $bookings = $this->getFilteredBookings($request, $session);
+
+        $html = $this->renderView('pdf_template.html.twig', ['bookings' => $bookings]);
+
+        $tempDir = sys_get_temp_dir() . '/mpdf_tmp';
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0777, true);
         }
 
-        $storageType = $request->cookies->get('storage_type', 'csv');
-        $filters = $request->query->all();
+        $mpdf = new Mpdf([
+            'tempDir' => $tempDir,
+            'mode' => 'utf-8',
+            'format' => 'A4',
+        ]);
 
-        if ($storageType === 'db') {
-            $bookings = $this->repository->getAllBookings($filters, $user->getId());
-        } else {
-            $bookings = $this->repository->getAllBookingsFromCsv($filters, $user->getId());
-        }
+        $mpdf->WriteHTML($html);
+        $mpdf->Output('bookings_report.pdf', 'D');
+        exit;
+    }
+
+    #[Route('/report/excel', name: 'generate_excel', methods: ['GET'])]
+    #[NoReturn]
+    public function generateExcelReport(Request $request, SessionInterface $session): Response
+    {
+        $bookings = $this->getFilteredBookings($request, $session);
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Заголовки
-        $sheet->fromArray(['ID', 'Имя', 'Услуга', 'Фотограф', 'Дата', 'Пользователь'], null, 'A1');
+        $sheet->fromArray(['ID', 'Имя', 'Услуга', 'Фотограф', 'Дата'], null, 'A1');
 
         $row = 2;
         foreach ($bookings as $booking) {
-            $sheet->setCellValue("A{$row}", $booking->getId());
-            $sheet->setCellValue("B{$row}", $booking->getName());
-            $sheet->setCellValue("C{$row}", $booking->getService());
-            $sheet->setCellValue("D{$row}", $booking->getPhotographer());
-            $sheet->setCellValue("E{$row}", $booking->getDate()->format('Y-m-d'));
-            $sheet->setCellValue("F{$row}", $booking->getUserId());
+            $sheet->fromArray([
+                $booking['id'] ?? '',
+                $booking['name'],
+                $booking['service'],
+                $booking['photographer'],
+                $booking['date']
+            ], null, "A{$row}");
             $row++;
         }
 
         $writer = new Xlsx($spreadsheet);
+        $response = new Response();
+        $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $response->headers->set('Content-Disposition', 'attachment;filename="bookings_report.xlsx"');
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'excel');
-        $writer->save($tempFile);
-
-        return $this->file($tempFile, 'bookings.xlsx', ResponseHeaderBag::DISPOSITION_ATTACHMENT);
+        ob_start();
+        $writer->save('php://output');
+        $excelOutput = ob_get_clean();
+        $response->setContent($excelOutput);
+        return $response;
     }
 
-    #[Route('/bookings/export/csv', name: 'booking_export_csv')]
-    public function exportCsv(Request $request): Response
+    #[Route('/report/csv', name: 'generate_csv', methods: ['GET'])]
+    #[NoReturn]
+    public function generateCsvReport(Request $request, SessionInterface $session): Response
     {
-        $user = $this->getUser();
-        if (!$user) {
-            return $this->redirectToRoute('app_login');
-        }
+        $bookings = $this->getFilteredBookings($request, $session);
 
-        $storageType = $request->cookies->get('storage_type', 'csv');
-        $filters = $request->query->all();
-
-        if ($storageType === 'db') {
-            $bookings = $this->repository->getAllBookings($filters, $user->getId());
-        } else {
-            $bookings = $this->repository->getAllBookingsFromCsv($filters, $user->getId());
-        }
+        $response = new Response();
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment; filename="bookings_report.csv"');
 
         $handle = fopen('php://temp', 'r+');
-
-        // Заголовки CSV
-        fputcsv($handle, ['ID', 'Имя', 'Услуга', 'Фотограф', 'Дата', 'Пользователь']);
-
+        fputcsv($handle, ['ID', 'Имя', 'Услуга', 'Фотограф', 'Дата']);
         foreach ($bookings as $booking) {
             fputcsv($handle, [
-                $booking->getId(),
-                $booking->getName(),
-                $booking->getService(),
-                $booking->getPhotographer(),
-                $booking->getDate()->format('Y-m-d'),
-                $booking->getUserId(),
+                $booking['id'] ?? '',
+                $booking['name'],
+                $booking['service'],
+                $booking['photographer'],
+                $booking['date']
             ]);
         }
-
         rewind($handle);
-        $content = stream_get_contents($handle);
+        $csv = stream_get_contents($handle);
         fclose($handle);
 
-        return new Response($content, 200, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="bookings.csv"',
-        ]);
+        $response->setContent($csv);
+        return $response;
+    }
+
+    private function getFilteredBookings(Request $request, SessionInterface $session): array
+    {
+        $storageType = $request->cookies->get('storage_type', 'csv');
+        $userId = $session->get('user_id', 0);
+        $filters = [
+            'name' => $request->query->get('filter_name', ''),
+            'service' => $request->query->get('filter_service', ''),
+            'photographer' => $request->query->get('filter_photographer', ''),
+            'date_from' => $request->query->get('filter_date_from', ''),
+            'date_to' => $request->query->get('filter_date_to', '')
+        ];
+
+        return $storageType === 'db'
+            ? $this->repository->getAllBookingsFromDb($filters, $userId)
+            : $this->repository->getAllBookingsFromCsv($filters, $userId);
     }
 }

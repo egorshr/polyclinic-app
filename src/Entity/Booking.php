@@ -2,32 +2,45 @@
 
 namespace App\Entity;
 
-use App\Repository\BookingRepository;
-use DateTimeInterface;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: BookingRepository::class)]
+#[ORM\Entity]
+#[ORM\Table(name: 'bookings')]
 class Booking
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\Column(type: 'integer')]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(type: 'string', length: 255)]
     private string $name;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(type: 'string', length: 255)]
     private string $service;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(type: 'string', length: 255)]
     private string $photographer;
 
-    #[ORM\Column(type: 'datetime')]
-    private DateTimeInterface $date;
+    #[ORM\Column(type: 'date')]
+    private \DateTimeInterface $date;
 
-    #[ORM\Column]
+    #[ORM\Column(type: 'integer')]
     private int $userId;
+
+    public function __construct(
+        string $name,
+        string $service,
+        string $photographer,
+        string $date, // строка формата 'YYYY-MM-DD'
+        int $userId
+    ) {
+        $this->name = $name;
+        $this->service = $service;
+        $this->photographer = $photographer;
+        $this->date = new \DateTime($date);
+        $this->userId = $userId;
+    }
 
     public function getId(): ?int
     {
@@ -39,21 +52,9 @@ class Booking
         return $this->name;
     }
 
-    public function setName(string $name): self
-    {
-        $this->name = $name;
-        return $this;
-    }
-
     public function getService(): string
     {
         return $this->service;
-    }
-
-    public function setService(string $service): self
-    {
-        $this->service = $service;
-        return $this;
     }
 
     public function getPhotographer(): string
@@ -61,21 +62,9 @@ class Booking
         return $this->photographer;
     }
 
-    public function setPhotographer(string $photographer): self
-    {
-        $this->photographer = $photographer;
-        return $this;
-    }
-
-    public function getDate(): DateTimeInterface
+    public function getDate(): \DateTimeInterface
     {
         return $this->date;
-    }
-
-    public function setDate(DateTimeInterface $date): self
-    {
-        $this->date = $date;
-        return $this;
     }
 
     public function getUserId(): int
@@ -83,9 +72,9 @@ class Booking
         return $this->userId;
     }
 
-    public function setUserId(int $userId): self
-    {
-        $this->userId = $userId;
-        return $this;
-    }
+    public function setName(string $name): void { $this->name = $name; }
+    public function setService(string $service): void { $this->service = $service; }
+    public function setPhotographer(string $photographer): void { $this->photographer = $photographer; }
+    public function setDate(\DateTimeInterface $date): void { $this->date = $date; }
+    public function setUserId(int $userId): void { $this->userId = $userId; }
 }
