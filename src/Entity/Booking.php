@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
 
 namespace App\Entity;
 
 use App\Repository\BookingRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use DateTimeImmutable;
 
 #[ORM\Entity(repositoryClass: BookingRepository::class)]
 class Booking
@@ -29,6 +32,9 @@ class Booking
     #[ORM\Column]
     private int $userId;
 
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, options: ["default" => "CURRENT_TIMESTAMP"])] // Новое поле
+    private DateTimeImmutable $createdAt;
+
     public function __construct(string $name, string $service, string $photographer, string $date, int $userId)
     {
         $this->name = $name;
@@ -36,6 +42,7 @@ class Booking
         $this->photographer = $photographer;
         $this->date = $date;
         $this->userId = $userId;
+        $this->createdAt = new DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -67,4 +74,11 @@ class Booking
     {
         return $this->userId;
     }
+
+    public function getCreatedAt(): DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+
 }

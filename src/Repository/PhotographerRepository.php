@@ -6,9 +6,7 @@ use App\Entity\Photographer;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
-/**
- * @extends ServiceEntityRepository<Photographer>
- */
+
 class PhotographerRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)

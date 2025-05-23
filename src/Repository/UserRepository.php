@@ -1,14 +1,13 @@
 <?php
-// src/Repository/UserRepository.php
+
 namespace App\Repository;
 
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Exception;
 
-/**
- * @extends ServiceEntityRepository<User>
- */
+
 class UserRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -22,7 +21,7 @@ class UserRepository extends ServiceEntityRepository
             $this->_em->persist($user);
             $this->_em->flush();
             return true;
-        } catch (\Exception) {
+        } catch (Exception) {
             return false;
         }
     }

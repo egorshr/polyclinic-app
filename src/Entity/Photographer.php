@@ -1,6 +1,6 @@
 <?php
 
-// src/Entity/Photographer.php
+
 namespace App\Entity;
 
 use App\Repository\PhotographerRepository;

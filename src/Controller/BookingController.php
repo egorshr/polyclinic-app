@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Controller;
 
 use App\Entity\Booking;
@@ -38,7 +37,7 @@ class BookingController extends AbstractController
     private KernelInterface $kernel;
     private ServiceRepository $serviceRepository;
     private PhotographerRepository $photographerRepository;
-    private DataMigrator $dataMigrator; // Добавлено свойство для DataMigrator
+    private DataMigrator $dataMigrator;
 
     public function __construct(
         BookingRepository $bookingRepository,
@@ -48,7 +47,7 @@ class BookingController extends AbstractController
         KernelInterface $kernel,
         ServiceRepository $serviceRepository,
         PhotographerRepository $photographerRepository,
-        DataMigrator $dataMigrator // Добавлена инъекция DataMigrator
+        DataMigrator $dataMigrator
     ) {
         $this->repository = $bookingRepository;
         $this->entityManager = $entityManager;
@@ -57,7 +56,7 @@ class BookingController extends AbstractController
         $this->kernel = $kernel;
         $this->serviceRepository = $serviceRepository;
         $this->photographerRepository = $photographerRepository;
-        $this->dataMigrator = $dataMigrator; // Присвоено свойство
+        $this->dataMigrator = $dataMigrator;
     }
 
     private function getUserId(): int
@@ -80,6 +79,7 @@ class BookingController extends AbstractController
         if ($redirect = $this->requireLogin()) {
             return $redirect;
         }
+
 
         $errors = $this->session->getFlashBag()->get('form_errors', []);
         $formDataFromSession = $this->session->getFlashBag()->get('form_data');
@@ -146,11 +146,19 @@ class BookingController extends AbstractController
         if (empty($errors)) {
             $userId = $this->getUserId();
             if ($userId <= 0) {
-                $errors[] = "Ошибка сессии пользователя. Пожалуйста, перезайдите.";
-                $this->session->getFlashBag()->add('form_errors', $errors);
+                $this->session->getFlashBag()->add('form_errors', "Ошибка сессии пользователя. Пожалуйста, перезайдите.");
                 $this->session->getFlashBag()->add('form_data', $data);
                 return $this->redirectToRoute('booking_form_show');
             }
+
+
+            dump([
+                'name_val' => $name, 'name_type' => gettype($name),
+                'service_val' => $serviceNameInput, 'service_type' => gettype($serviceNameInput),
+                'photographer_val' => $photographerNameInput, 'photographer_type' => gettype($photographerNameInput),
+                'date_val' => $dateInput, 'date_type' => gettype($dateInput),
+                'userId_val' => $userId, 'userId_type' => gettype($userId)
+            ]);
 
             $booking = new Booking(
                 $name,
@@ -163,7 +171,8 @@ class BookingController extends AbstractController
             try {
                 $this->repository->saveBooking($booking, $storageType);
             } catch (Exception $e) {
-                $this->session->getFlashBag()->add('form_errors', ["Ошибка сохранения: " . $e->getMessage()]);
+
+                $this->session->getFlashBag()->add('form_errors', "Ошибка сохранения: " . $e->getMessage());
                 $this->session->getFlashBag()->add('form_data', $data);
                 return $this->redirectToRoute('booking_form_show');
             }
@@ -171,7 +180,9 @@ class BookingController extends AbstractController
             return $this->redirectToRoute('booking_success');
         }
 
-        $this->session->getFlashBag()->add('form_errors', $errors);
+        foreach ($errors as $validationError) {
+            $this->session->getFlashBag()->add('form_errors', $validationError);
+        }
         $this->session->getFlashBag()->add('form_data', $data);
         return $this->redirectToRoute('booking_form_show');
     }
@@ -192,7 +203,6 @@ class BookingController extends AbstractController
             return $redirect;
         }
 
-        $message = ''; // Это переменная больше не используется для передачи в Twig, так как есть flash
         $migratedCount = 0;
         try {
             $userId = $this->getUserId();
@@ -201,12 +211,9 @@ class BookingController extends AbstractController
             }
 
             $migratedCount = $this->dataMigrator->migrateFromCsvToDb($userId);
-            $successMessage = "Успешно мигрировано записей: $migratedCount";
-            $this->addFlash('success', $successMessage);
 
         } catch (Exception $e) {
-            $errorMessage = "Ошибка при миграции данных: " . $e->getMessage();
-            $this->addFlash('error', $errorMessage);
+            $this->addFlash('error', "Ошибка при миграции данных: " . $e->getMessage());
         }
 
         $storageType = $request->cookies->get('storage_type', 'csv');
@@ -214,6 +221,9 @@ class BookingController extends AbstractController
             'storageType' => $storageType,
         ]);
     }
+
+
+
 
     #[Route('/set-storage', name: 'booking_set_storage_type', methods: ['POST'])]
     public function setStorageType(Request $request): RedirectResponse

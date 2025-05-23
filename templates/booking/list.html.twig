@@ -14,7 +14,7 @@
         }
 
         .container {
-            max-width: 960px; /* Соответствует .container в вашем PHP */
+            max-width: 960px;
             margin: 50px auto;
             background: #fff;
             border-radius: 8px;
@@ -22,16 +22,16 @@
             padding: 40px;
         }
 
-        h1.page-title { /* Добавлен класс для h1, чтобы не конфликтовать с base.html.twig */
+        h1.page-title {
             margin-bottom: 20px;
             font-size: 28px;
             color: #222;
         }
-        /* Навигация уже есть в _navbar.html.twig, здесь только информация о хранилище */
+
         .storage-info-custom {
             font-size: 14px;
             color: #666;
-            text-align: right; /* Для соответствия вашему PHP */
+            text-align: right;
             margin-bottom: 20px;
         }
 
@@ -68,21 +68,21 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 14px;
-            width: 100%; /* Bootstrap-like behavior */
+            width: 100%;
         }
 
-        .filter-row { /* Для размещения элементов фильтра в строку */
+        .filter-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px; /* Расстояние между элементами */
+            gap: 15px;
             margin-bottom: 15px;
         }
         .filter-row .filter-group {
-            flex: 1 1 200px; /* Базовая ширина, позволяет переноситься */
-            margin-bottom: 0; /* Убираем нижний отступ у группы */
+            flex: 1 1 200px;
+            margin-bottom: 0;
         }
         .filter-row .filter-group.date-filter {
-            max-width: 220px; /* Для полей дат */
+            max-width: 220px;
         }
 
 
@@ -90,12 +90,12 @@
             display: flex;
             justify-content: flex-end;
             gap: 12px;
-            margin-top: 20px; /* Отступ сверху для кнопок */
+            margin-top: 20px;
         }
 
         .apply-button,
         .reset-button,
-        .action-button { /* Общий класс для кнопок действий */
+        .action-button {
             background-color: #6a4c93;
             color: #fff;
             text-decoration: none;
@@ -105,7 +105,7 @@
             font-size: 14px;
             cursor: pointer;
             transition: background-color 0.2s;
-            display: inline-block; /* Для корректного отображения ссылок как кнопок */
+            display: inline-block;
         }
 
         .apply-button:hover,
@@ -117,7 +117,7 @@
             background-color: transparent;
             color: #6a4c93;
             padding: 10px 18px;
-            border: 1px solid #6a4c93; /* Добавим границу для лучшего вида */
+            border: 1px solid #6a4c93;
         }
 
         .reset-button:hover {
@@ -151,16 +151,16 @@
             color: #777;
             padding: 30px 0;
             font-size: 16px;
-            border: 1px dashed #ccc; /* Визуальное выделение */
+            border: 1px dashed #ccc;
             border-radius: 4px;
             background-color: #f9f9f9;
         }
 
-        .actions-footer { /* Переименовал класс, чтобы не конфликтовать */
+        .actions-footer {
             display: flex;
             justify-content: flex-end;
             gap: 12px;
-            margin-top: 20px; /* Добавлен отступ */
+            margin-top: 20px;
         }
         .report-actions {
             margin-bottom: 20px;
@@ -177,7 +177,7 @@
 {% endblock %}
 
 {% block body %}
-    <div class="container"> {# Этот div .container здесь, чтобы не дублировать с base.html.twig #}
+    <div class="container">
         <h1 class="page-title">Просмотр записей</h1>
 
         <div class="storage-info-custom">
@@ -234,9 +234,9 @@
 
         <div class="report-actions">
             <span>Отчеты (на основе текущих фильтров):</span>
-            <a href="{{ path('booking_report_pdf', app.request.query.all) }}" class="action-button" style="background-color: #dc3545;">PDF</a> {# Красный для PDF #}
-            <a href="{{ path('booking_report_excel', app.request.query.all) }}" class="action-button" style="background-color: #198754;">Excel</a> {# Зеленый для Excel #}
-            <a href="{{ path('booking_report_csv', app.request.query.all) }}" class="action-button" style="background-color: #0dcaf0;">CSV</a> {# Голубой для CSV #}
+            <a href="{{ path('booking_report_pdf', app.request.query.all) }}" class="action-button" style="background-color: #dc3545;">PDF</a>
+            <a href="{{ path('booking_report_excel', app.request.query.all) }}" class="action-button" style="background-color: #198754;">Excel</a>
+            <a href="{{ path('booking_report_csv', app.request.query.all) }}" class="action-button" style="background-color: #0dcaf0;">CSV</a>
         </div>
 
 
@@ -264,9 +264,6 @@
                     <th>Услуга</th>
                     <th>Фотограф</th>
                     <th>Дата</th>
-                    {# В вашем PHP был столбец Дата создания только для DB, но Booking сущность не имеет createdAt сейчас #}
-                    {# Если бы было: #}
-                    {# {% if storageType == 'db' and booking.createdAt is defined %}<th>Дата создания</th>{% endif %} #}
                 </tr>
                 </thead>
                 <tbody>
@@ -277,7 +274,6 @@
                         <td>{{ booking.service | default('') }}</td>
                         <td>{{ booking.photographer | default('') }}</td>
                         <td>{{ booking.date | default('') }}</td>
-                        {# {% if storageType == 'db' and booking.createdAt is defined %}<td>{{ booking.createdAt | date('Y-m-d H:i:s') }}</td>{% endif %} #}
                     </tr>
                 {% endfor %}
                 </tbody>
@@ -287,7 +283,7 @@
         <div class="actions-footer">
             <a href="{{ path('booking_form_show') }}" class="action-button">Новая запись</a>
             {% if storageType == 'csv' %}
-                <a href="{{ path('booking_migrate_data') }}" class="action-button" style="background-color: #ffc107; color: #000;">Мигрировать в БД</a> {# Желтый для миграции #}
+                <a href="{{ path('booking_migrate_data') }}" class="action-button" style="background-color: #ffc107; color: #000;">Мигрировать в БД</a>
             {% endif %}
         </div>
     </div>

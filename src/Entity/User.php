@@ -1,6 +1,6 @@
 <?php
 
-// src/Entity/User.php
+
 namespace App\Entity;
 
 use App\Repository\UserRepository;
@@ -26,7 +26,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 50)]
     private string $role;
 
-    #[ORM\Column(length: 19)] // Format YYYY-MM-DD HH:MM:SS
+    #[ORM\Column(length: 19)]
     private string $createdAt;
 
     public function __construct(string $username, string $passwordHash, string $role = 'user', ?string $createdAt = null)
@@ -47,9 +47,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->username;
     }
 
-    /**
-     * @see PasswordAuthenticatedUserInterface
-     */
+
     public function getPassword(): string
     {
         return $this->passwordHash;
@@ -71,9 +69,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->role;
     }
 
-    /**
-     * @see UserInterface
-     */
+
     public function getRoles(): array
     {
         $symfonyRoles = ['ROLE_USER'];
@@ -98,16 +94,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return password_verify($password, $this->passwordHash);
     }
 
-    /**
-     * @see UserInterface
-     */
+
     public function eraseCredentials(): void
     {
     }
 
-    /**
-     * @see UserInterface
-     */
+
     public function getUserIdentifier(): string
     {
         return $this->username;

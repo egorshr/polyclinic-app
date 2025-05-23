@@ -1,6 +1,6 @@
 <?php
 
-// src/Entity/Service.php
+
 namespace App\Entity;
 
 use App\Repository\ServiceRepository;

@@ -1,5 +1,5 @@
 <?php
-// src/Repository/BookingRepository.php
+
 namespace App\Repository;
 
 use App\Entity\Booking;
@@ -7,11 +7,9 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Filesystem\Filesystem;
-use Exception; // Используем для сохранения совместимости с оригинальными throw
+use Exception;
 
-/**
- * @extends ServiceEntityRepository<Booking>
- */
+
 class BookingRepository extends ServiceEntityRepository
 {
     private KernelInterface $kernel;
@@ -42,10 +40,12 @@ class BookingRepository extends ServiceEntityRepository
 
     private function saveToDatabase(Booking $booking): void
     {
+
         try {
-            $this->_em->persist($booking);
-            $this->_em->flush();
-        } catch (\Exception $e) { // Doctrine может выбрасывать свои типы исключений
+            $entityManager = $this->getEntityManager();
+            $entityManager->persist($booking);
+            $entityManager->flush();
+        } catch (Exception $e) {
             throw new Exception("Ошибка при сохранении в базу данных: " . $e->getMessage());
         }
     }
@@ -56,7 +56,7 @@ class BookingRepository extends ServiceEntityRepository
         $dir = dirname($filePath);
 
         if (!$this->filesystem->exists($dir)) {
-            $this->filesystem->mkdir($dir, 0775); // Используем более безопасные права
+            $this->filesystem->mkdir($dir, 0775);
         }
 
         $isNewFile = !$this->filesystem->exists($filePath);
@@ -81,9 +81,7 @@ class BookingRepository extends ServiceEntityRepository
         fclose($fileHandle);
     }
 
-    /**
-     * @return array<int, array<string, mixed>>
-     */
+
     public function getAllBookingsFromDb(array $filters = [], ?int $userId = null): array
     {
         try {
@@ -114,23 +112,17 @@ class BookingRepository extends ServiceEntityRepository
                 $qb->andWhere('b.date <= :date_to')
                     ->setParameter('date_to', $filters['date_to']);
             }
-
-            // Так как в сущности Booking нет поля createdAt,
-            // сортируем по дате бронирования и затем по ID для стабильности
             $qb->orderBy('b.date', 'DESC')
                 ->addOrderBy('b.id', 'DESC');
 
 
             return $qb->getQuery()->getArrayResult();
 
-        } catch (\Exception $e) { // Ловим общие исключения Doctrine
+        } catch (Exception $e) {
             throw new Exception("Ошибка при получении данных из базы: " . $e->getMessage());
         }
     }
 
-    /**
-     * @return array<int, array<string, mixed>>
-     */
     public function getAllBookingsFromCsv(array $filters = [], ?int $userId = null): array
     {
         if ($userId === null) {
@@ -147,22 +139,18 @@ class BookingRepository extends ServiceEntityRepository
             throw new Exception("Не удалось открыть CSV файл для чтения: " . $filePath);
         }
 
-        fgetcsv($fileHandle); // Пропускаем заголовок
+        fgetcsv($fileHandle);
 
         $bookings = [];
         while (($data = fgetcsv($fileHandle)) !== false) {
-            // CSV содержит 5 полей: name, service, photographer, date, user_id
             if (count($data) >= 5) {
                 $bookingData = [
                     'name' => $data[0],
                     'service' => $data[1],
                     'photographer' => $data[2],
                     'date' => $data[3],
-                    'user_id' => (int)$data[4] // Убедимся, что user_id это int
+                    'user_id' => (int)$data[4]
                 ];
-
-                // Проверяем, что запись принадлежит текущему пользователю, если $userId задан
-                // (хотя файл уже специфичен для пользователя, это двойная проверка)
                 if ($bookingData['user_id'] !== $userId) {
                     continue;
                 }
@@ -191,6 +179,6 @@ class BookingRepository extends ServiceEntityRepository
             }
         }
         fclose($fileHandle);
-        return array_reverse($bookings); // Сохраняем оригинальную логику сортировки для CSV
+        return array_reverse($bookings);
     }
 }

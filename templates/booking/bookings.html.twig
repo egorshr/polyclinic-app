@@ -40,7 +40,8 @@
                     <select id="filter_service" name="filter_service">
                         <option value="">Все услуги</option>
                         {% for service in availableServices %}
-                            <option value="{{ service }}" {% if filters.service is defined and filters.service == service %}selected{% endif %}>{{ service }}</option>
+                            <option value="{{ service }}"
+                                    {% if filters.service is defined and filters.service == service %}selected{% endif %}>{{ service }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -49,17 +50,20 @@
                     <select id="filter_photographer" name="filter_photographer">
                         <option value="">Все фотографы</option>
                         {% for photographer in availablePhotographers %}
-                            <option value="{{ photographer }}" {% if filters.photographer is defined and filters.photographer == photographer %}selected{% endif %}>{{ photographer }}</option>
+                            <option value="{{ photographer }}"
+                                    {% if filters.photographer is defined and filters.photographer == photographer %}selected{% endif %}>{{ photographer }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="filter-group" style="max-width: 200px;">
                     <label for="filter_date_from">Дата от</label>
-                    <input type="date" id="filter_date_from" name="filter_date_from" value="{{ filters.date_from|default('') }}">
+                    <input type="date" id="filter_date_from" name="filter_date_from"
+                           value="{{ filters.date_from|default('') }}">
                 </div>
                 <div class="filter-group" style="max-width: 200px;">
                     <label for="filter_date_to">Дата до</label>
-                    <input type="date" id="filter_date_to" name="filter_date_to" value="{{ filters.date_to|default('') }}">
+                    <input type="date" id="filter_date_to" name="filter_date_to"
+                           value="{{ filters.date_to|default('') }}">
                 </div>
                 <div class="filter-buttons">
                     <button type="submit" class="apply-button">Применить фильтры</button>

@@ -12,7 +12,7 @@
             padding: 0;
         }
 
-        .migrate-container { /* Переименован класс */
+        .migrate-container {
             max-width: 500px;
             background: white;
             padding: 30px;
@@ -22,19 +22,18 @@
             text-align: center;
         }
 
-        .migrate-container h1.page-title { /* Класс для h1 */
-            margin-bottom: 20px; /* Добавлен отступ снизу для h1 */
+        .migrate-container h1.page-title {
+            margin-bottom: 20px;
         }
 
-        /* .message стили будут обрабатываться через app.flashes в base.html.twig,
-           но если нужно специфичное сообщение на этой странице, можно оставить: */
+
         .page-message {
             padding: 15px;
             margin-bottom: 20px;
             border-radius: 5px;
-            /* Стили для success/error будут из app.flashes */
+
         }
-        .page-message.success { /* Пример, если нужно особое форматирование */
+        .page-message.success {
             background-color: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
@@ -46,7 +45,7 @@
         }
 
 
-        .migrate-link, /* Общий класс для ссылок-кнопок */
+        .migrate-link,
         .migrate-button {
             display: inline-block;
             margin-top: 20px;
@@ -57,17 +56,17 @@
             transition: background-color 0.2s, color 0.2s;
         }
 
-        .migrate-link { /* Для ссылок, стилизованных под кнопки */
+        .migrate-link {
             color: #5c67f2;
-            background-color: transparent; /* Или какой-то светлый фон */
-            border: 1px solid #5c67f2; /* Добавим границу для вида */
+            background-color: transparent;
+            border: 1px solid #5c67f2;
         }
         .migrate-link:hover {
             color: white;
             background-color: #5c67f2;
         }
 
-        .migrate-button { /* Для настоящих кнопок или ссылок с более выраженным стилем кнопки */
+        .migrate-button {
             background-color: #5c67f2;
             color: white;
         }
@@ -87,28 +86,12 @@
 {% block body %}
     <div class="migrate-container">
         <h1 class="page-title">Миграция данных из CSV в базу данных</h1>
-        {# Информация о пользователе теперь в _navbar.html.twig #}
-
-        {# Flash-сообщения будут отображаться из base.html.twig #}
-        {# Если нужно дополнительное статическое сообщение на этой странице:
-        {% if message is defined and message is not empty %}
-            <div class="page-message {{ message | lower | contains('ошибка') ? 'error' : 'success' }}">
-                {{ message }}
-            </div>
-        {% endif %}
-        #}
 
         <div class="migrate-description">
             <p>Текущий тип хранилища по умолчанию: <strong>{{ storageType == 'db' ? 'База данных' : 'CSV' }}</strong>.</p>
-            <p>Эта операция перенесет данные из CSV файлов (если они существуют для вашего пользователя и содержат данные) в базу данных. После успешной миграции соответствующий CSV файл будет очищен (останется только заголовок).</p>
         </div>
 
-        <form action="{{ path('booking_migrate_data') }}" method="post" style="margin-bottom: 20px;">
-            <button type="submit" class="migrate-button" style="background-color: #ffc107; color: #000;">Запустить миграцию</button>
-        </form>
-        <small class="form-text text-muted d-block" style="margin-bottom: 20px;">
-            Примечание: Если для вашего пользователя нет CSV файла, он пуст, или все данные уже были смигрированы, будет смигрировано 0 новых записей.
-        </small>
+
 
         <div>
             <a href="{{ path('booking_form_show') }}" class="migrate-link">Вернуться к форме</a>

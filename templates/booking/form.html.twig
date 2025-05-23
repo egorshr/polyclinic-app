@@ -6,14 +6,13 @@
     {{ parent() }}
     <style>
         body {
-            font-family: Arial, sans-serif; /* Как в вашем PHP */
+            font-family: Arial, sans-serif;
             background-color: #f4f4f8;
             margin: 0;
             padding: 0;
-            /* color: #333; уже есть в base или другом месте */
         }
 
-        .form-container { /* Переименовал, чтобы не конфликтовать с .container из base.html.twig */
+        .form-container {
             max-width: 500px;
             background: white;
             padding: 30px;
@@ -22,21 +21,20 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        .form-container h1.page-title { /* Добавлен класс для h1 */
+        .form-container h1.page-title {
             text-align: center;
             color: #333;
-            margin-bottom: 20px; /* Добавлен отступ снизу */
+            margin-bottom: 20px;
         }
-        /* .user-info и .nav-links теперь часть _navbar.html.twig и base.html.twig */
 
-        .form-label-custom { /* Для <label> */
+        .form-label-custom {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
             color: #444;
         }
 
-        .form-input-custom, /* Для <input> и <select> */
+        .form-input-custom,
         .form-select-custom {
             width: 100%;
             padding: 10px;
@@ -46,7 +44,7 @@
             box-sizing: border-box;
         }
 
-        .form-button-custom { /* Для <button> */
+        .form-button-custom {
             background-color: #5c67f2;
             color: white;
             border: none;
@@ -55,14 +53,14 @@
             font-size: 16px;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.2s; /* Добавил transition */
+            transition: background-color 0.2s;
         }
 
         .form-button-custom:hover {
             background-color: #434de2;
         }
 
-        .errors-custom { /* Для блока ошибок */
+        .errors-custom {
             background-color: #ffe0e0;
             border: 1px solid #cc0000;
             padding: 10px;
@@ -87,7 +85,7 @@
             margin-top: 0;
             margin-bottom: 10px;
             color: #333;
-            font-size: 1.1em; /* Немного уменьшил */
+            font-size: 1.1em;
         }
 
         .storage-form {
@@ -96,16 +94,16 @@
             justify-content: space-between;
         }
         .storage-form-options {
-            display: flex; /* Для размещения радиокнопок в ряд */
-            gap: 15px;    /* Пространство между радиокнопками */
+            display: flex;
+            gap: 15px;
         }
 
-        .storage-form label { /* Для label радиокнопок */
+        .storage-form label {
             margin-bottom: 0;
             margin-right: 10px;
             display: inline-flex;
             align-items: center;
-            font-weight: normal; /* Убираем жирность с label радиокнопок */
+            font-weight: normal;
             color: #444;
         }
 
@@ -113,28 +111,28 @@
             width: auto;
             margin-right: 5px;
             margin-bottom: 0;
-            padding: 0; /* Убираем внутренние отступы у радио */
-            border: initial; /* Сброс стилей границы */
+            padding: 0;
+            border: initial;
             border-radius: initial;
             box-sizing: initial;
         }
 
-        .storage-form button { /* Для кнопки "Применить" в выборе хранилища */
+        .storage-form button {
             width: auto;
             padding: 8px 15px;
-            font-size: 14px; /* Уменьшил шрифт */
-            background-color: #6c757d; /* Серый цвет как у Bootstrap secondary */
+            font-size: 14px;
+            background-color: #6c757d;
         }
         .storage-form button:hover {
             background-color: #5a6268;
         }
 
-        .form-nav-links { /* Класс для ссылок под формой */
+        .form-nav-links {
             display: flex;
             justify-content: space-between;
             margin-top: 20px;
-            padding-top: 15px; /* Отступ сверху */
-            border-top: 1px solid #eee; /* Разделитель */
+            padding-top: 15px;
+            border-top: 1px solid #eee;
         }
 
         .form-nav-links a {
@@ -152,7 +150,6 @@
 {% block body %}
     <div class="form-container">
         <h1 class="page-title">Запись в фотостудию</h1>
-        {# Информация о пользователе теперь в _navbar.html.twig #}
 
         <div class="storage-selector">
             <h3>Выберите тип хранилища данных</h3>
@@ -171,12 +168,13 @@
             </form>
         </div>
 
+        {# ИЗМЕНЕННЫЙ БЛОК ВЫВОДА ОШИБОК #}
         {% if errors is defined and errors is not empty %}
             <div class="errors-custom">
                 <strong>Обнаружены ошибки:</strong>
                 <ul>
-                    {% for error in errors %}
-                        <li>{{ error }}</li>
+                    {% for error_message in errors %} {# errors теперь одномерный массив строк #}
+                        <li>{{ error_message }}</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -222,7 +220,7 @@
 
         <div class="form-nav-links">
             <a href="{{ path('booking_list') }}">Просмотр записей</a>
-            {% if storageType == 'csv' %} {# Условие как в вашем PHP-файле, только для CSV #}
+            {% if storageType == 'csv' %}
                 <a href="{{ path('booking_migrate_data') }}">Мигрировать данные в БД</a>
             {% endif %}
         </div>
