@@ -22,10 +22,11 @@ class AuthController extends AbstractController
     private EntityManagerInterface $entityManager;
 
     public function __construct(
-        UserRepository $userRepository,
+        UserRepository              $userRepository,
         UserPasswordHasherInterface $passwordHasher,
-        EntityManagerInterface $entityManager
-    ) {
+        EntityManagerInterface      $entityManager
+    )
+    {
         $this->userRepository = $userRepository;
         $this->passwordHasher = $passwordHasher;
         $this->entityManager = $entityManager;
@@ -34,11 +35,14 @@ class AuthController extends AbstractController
     #[Route('/login', name: 'auth_login_form', methods: ['GET'])]
     public function showLoginForm(Request $request): Response
     {
+
         $errors = $request->getSession()->getFlashBag()->get('login_errors', []);
-        $usernameAttempt = $request->getSession()->getFlashBag()->get('login_username_attempt');
+        $usernameAttemptMessages = $request->getSession()->getFlashBag()->get('login_username_attempt');
+        $usernameAttempt = $usernameAttemptMessages[0] ?? '';
+
         return $this->render('auth/login.html.twig', [
             'errors' => $errors,
-            'username' => $usernameAttempt[0] ?? ''
+            'username' => $usernameAttempt
         ]);
     }
 
@@ -47,7 +51,7 @@ class AuthController extends AbstractController
     {
         $username = $request->request->get('username', '');
         $password = $request->request->get('password', '');
-        $errors = [];
+
 
         if (empty($username) || empty($password)) {
             $session->getFlashBag()->add('login_errors', 'Логин и пароль обязательны для заполнения.');
@@ -67,20 +71,24 @@ class AuthController extends AbstractController
 
         $session->set('user_id', $user->getId());
         $session->set('username', $user->getUsername());
-        $session->set('role', $user->getRole());
+        $session->set('role', $user->getRole()); // Убедитесь, что у User есть метод getRole()
 
-        return $this->redirectToRoute('booking_form_show');
+        return $this->redirectToRoute('booking_form_show'); // Убедитесь, что этот маршрут существует
     }
 
     #[Route('/register', name: 'auth_register_form', methods: ['GET'])]
     public function showRegisterForm(Request $request): Response
     {
-        $errors = $request->getSession()->getFlashBag()->get('register_errors', []);
-        $formData = $request->getSession()->getFlashBag()->get('register_form_data');
-        $currentFormData = $formData[0] ?? [];
+        $flashMessages = $request->getSession()->getFlashBag()->get('register_errors');
+
+        $actualErrors = $flashMessages[0] ?? [];
+
+        $formDataMessages = $request->getSession()->getFlashBag()->get('register_form_data');
+
+        $currentFormData = $formDataMessages[0] ?? [];
 
         return $this->render('auth/register.html.twig', [
-            'errors' => $errors,
+            'errors' => $actualErrors,
             'username' => $currentFormData['username'] ?? '',
         ]);
     }
@@ -114,15 +122,17 @@ class AuthController extends AbstractController
         }
 
         if (!empty($errors)) {
+
             $session->getFlashBag()->add('register_errors', $errors);
             $session->getFlashBag()->add('register_form_data', ['username' => $username]);
             return $this->redirectToRoute('auth_register_form');
         }
 
-        $tempUserForHasher = new User($username, '');
-        $hashedPassword = $this->passwordHasher->hashPassword($tempUserForHasher, $password);
+        $userForHashing = new User($username, 'placeholder_password');
+        $hashedPassword = $this->passwordHasher->hashPassword($userForHashing, $password);
 
         $user = new User($username, $hashedPassword);
+
 
         $this->entityManager->persist($user);
         $this->entityManager->flush();
@@ -137,6 +147,7 @@ class AuthController extends AbstractController
         $session->invalidate();
         return $this->redirectToRoute('auth_login_form');
     }
+
 
     public function isLoggedIn(SessionInterface $session): bool
     {
