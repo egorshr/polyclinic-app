@@ -1,0 +1,284 @@
+{# templates/visit/form.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Запись на прием - {{ parent() }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {# Стили можно скопировать из booking/form.html.twig и при необходимости адаптировать #}
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f8;
+            margin: 0;
+            padding: 0;
+        }
+
+        .form-container {
+            max-width: 600px;
+            background: white;
+            padding: 30px;
+            margin: 50px auto;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-container h1.page-title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .form-label-custom {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .form-input-custom,
+        .form-select-custom {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        .form-input-custom.is-invalid,
+        .form-select-custom.is-invalid {
+            border-color: #cc0000;
+        }
+        .invalid-feedback {
+            color: #cc0000;
+            font-size: 0.875em;
+            display: block;
+            margin-top: -10px;
+            margin-bottom: 10px;
+        }
+
+        .form-button-custom {
+            background-color: #5c67f2;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .form-button-custom:hover {
+            background-color: #434de2;
+        }
+
+        .errors-summary-custom {
+            background-color: #ffe0e0;
+            border: 1px solid #cc0000;
+            padding: 10px;
+            margin-bottom: 20px;
+            color: #cc0000;
+            border-radius: 4px;
+        }
+        .errors-summary-custom ul {
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+
+        .form-nav-links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .form-nav-links a {
+            color: #5c67f2;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .form-nav-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="form-container">
+        <h1 class="page-title">Запись на прием в поликлинику</h1>
+
+        {% if errors is defined and errors is iterable %}
+            {% set generalErrors = [] %}
+            {% for key, error_message_list in errors %}
+                {% if key not in ['specialty', 'employee', 'service', 'visit_datetime'] and error_message_list is iterable %}
+                    {% for single_error in error_message_list %}
+                        {% set generalErrors = generalErrors|merge([single_error]) %}
+                    {% endfor %}
+                {% elseif key not in ['specialty', 'employee', 'service', 'visit_datetime'] and error_message_list is not iterable %}
+                    {% set generalErrors = generalErrors|merge([error_message_list]) %}
+                {% endif %}
+            {% endfor %}
+            {% if generalErrors is not empty %}
+                <div class="errors-summary-custom">
+                    <strong>Обнаружены ошибки:</strong>
+                    <ul>
+                        {% for error_message in generalErrors %}
+                            <li>{{ error_message }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        {% endif %}
+
+
+        <form action="{{ path('visit_form_submit') }}" method="POST" autocomplete="off">
+            {# Поле для выбора специальности #}
+            <div>
+                <label for="specialty_id" class="form-label-custom">Специальность врача</label>
+                <select name="specialty_id" id="specialty_id" class="form-select-custom {% if errors.specialty is defined %}is-invalid{% endif %}" required>
+                    <option value="">Выберите специальность</option>
+                    {% for specialty in availableSpecialties %}
+                        <option value="{{ specialty.id }}" {{ (data.specialty_id | default('') == specialty.id) ? 'selected' : '' }}>
+                            {{ specialty.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% if errors.specialty is defined %}
+                    <div class="invalid-feedback">{{ errors.specialty|join(', ') }}</div>
+                {% endif %}
+            </div>
+
+            {# Поле для выбора врача (сотрудника) - будет фильтроваться по специальности #}
+            <div>
+                <label for="employee_id" class="form-label-custom">Врач</label>
+                <select name="employee_id" id="employee_id" class="form-select-custom {% if errors.employee is defined %}is-invalid{% endif %}" required>
+                    <option value="">Сначала выберите специальность</option>
+                    {# Изначально рендерим всех врачей, JS их отфильтрует/скроет #}
+                    {% for employee in availableEmployees %}
+                        <option value="{{ employee.id }}" data-specialty-id="{{ employee.specialty.id }}"
+                                {{ (data.employee_id | default('') == employee.id) ? 'selected' : '' }}>
+                            {{ employee.fullName }} ({{ employee.specialty.name }})
+                        </option>
+                    {% endfor %}
+                </select>
+                {% if errors.employee is defined %}
+                    <div class="invalid-feedback">{{ errors.employee|join(', ') }}</div>
+                {% endif %}
+            </div>
+
+            {# Поле для выбора медицинской услуги (опционально) #}
+            <div>
+                <label for="service_id" class="form-label-custom">Медицинская услуга (опционально)</label>
+                <select name="service_id" id="service_id" class="form-select-custom {% if errors.service is defined %}is-invalid{% endif %}">
+                    <option value="">Выберите услугу (если необходимо)</option>
+                    {% for service_item in availableServices %}
+                        <option value="{{ service_item.id }}" {{ (data.service_id | default('') == service_item.id) ? 'selected' : '' }}>
+                            {{ service_item.name }} ({{ service_item.price }} руб.)
+                        </option>
+                    {% endfor %}
+                </select>
+                {% if errors.service is defined %}
+                    <div class="invalid-feedback">{{ errors.service|join(', ') }}</div>
+                {% endif %}
+            </div>
+
+            {# Поле для выбора даты и времени #}
+            <div>
+                <label for="visit_datetime" class="form-label-custom">Дата и время приема</label>
+                <input type="datetime-local" name="visit_datetime" id="visit_datetime" class="form-input-custom {% if errors.visit_datetime is defined %}is-invalid{% endif %}"
+                       value="{{ data.visit_datetime | default('') }}" required
+                       min="{{ "now"|date("Y-m-d\\TH:i") }}">
+                {% if errors.visit_datetime is defined %}
+                    <div class="invalid-feedback">{{ errors.visit_datetime|join(', ') }}</div>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="form-button-custom">Записаться</button>
+        </form>
+
+        <div class="form-nav-links">
+            <a href="{{ path('visit_list') }}">Просмотр моих записей</a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const specialtySelect = document.getElementById('specialty_id');
+            const employeeSelect = document.getElementById('employee_id');
+
+            if (!specialtySelect || !employeeSelect) {
+                console.error('Ошибка: один из select-элементов (specialty_id или employee_id) не найден.');
+                return;
+            }
+
+            // Шаг 1: Получаем ВСЕ опции, которые есть в HTML на момент загрузки
+            const initialHtmlOptions = Array.from(employeeSelect.options);
+
+            // Шаг 2: Фильтруем их, чтобы получить только опции врачей (исключая плейсхолдеры с value="")
+            //         и сохраняем их для последующего использования.
+            //         Это `allEmployeeOptions` будет нашим "мастер-списком" врачей.
+            const allEmployeeOptions = initialHtmlOptions.filter(function(option) {
+                return option.value !== "";
+            });
+
+            console.log("Мастер-список опций врачей (отфильтрованы плейсхолдеры):",
+                allEmployeeOptions.map(function(opt) {
+                    return {
+                        text: opt.textContent,
+                        value: opt.value,
+                        specialtyId: opt.dataset.specialtyId
+                    };
+                })
+            );
+
+            function filterEmployeesBySpecialty() {
+                const selectedSpecialtyId = specialtySelect.value;
+                const previouslySelectedEmployeeId = employeeSelect.value;
+
+                console.log('Выбрана специальность ID:', selectedSpecialtyId);
+
+                employeeSelect.innerHTML = ''; // Полная очистка текущих опций в select
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = "";
+                placeholderOption.textContent = selectedSpecialtyId ? "Выберите врача" : "Сначала выберите специальность";
+                employeeSelect.appendChild(placeholderOption);
+
+                if (selectedSpecialtyId) {
+                    let addedCount = 0;
+                    // Итерируемся по нашему отфильтрованному "мастер-списку" врачей
+                    allEmployeeOptions.forEach(function(optionTemplate) {
+                        console.log(`  Проверка врача: ${optionTemplate.textContent}, data-specialty-id: ${optionTemplate.dataset.specialtyId}`);
+                        if (optionTemplate.dataset.specialtyId === selectedSpecialtyId) {
+                            employeeSelect.appendChild(optionTemplate.cloneNode(true));
+                            addedCount++;
+                            console.log(`    ДОБАВЛЕН: ${optionTemplate.textContent}`);
+                        }
+                    });
+                    console.log(`Для специальности ${selectedSpecialtyId} добавлено врачей: ${addedCount}`);
+                }
+
+                // Восстановление выбора
+                if (previouslySelectedEmployeeId && previouslySelectedEmployeeId !== "") {
+                    const stillExists = Array.from(employeeSelect.options).some(function(opt) {
+                        return opt.value === previouslySelectedEmployeeId;
+                    });
+                    if (stillExists) {
+                        employeeSelect.value = previouslySelectedEmployeeId;
+                    } else {
+                        employeeSelect.value = "";
+                    }
+                } else {
+                    employeeSelect.value = "";
+                }
+            }
+
+            specialtySelect.addEventListener('change', filterEmployeesBySpecialty);
+            filterEmployeesBySpecialty(); // Первоначальный вызов
+        });
+    </script>
+{% endblock %}

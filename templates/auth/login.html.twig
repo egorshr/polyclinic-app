@@ -1,3 +1,4 @@
+{# templates/auth/login.html.twig #}
 {% extends 'base.html.twig' %}
 
 {% block title %}Вход в систему - {{ parent() }}{% endblock %}
@@ -73,6 +74,16 @@
             margin-bottom: 0;
         }
 
+        .alert-success { /* Стиль для сообщения об успехе */
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+
 
         .register-link-custom {
             text-align: center;
@@ -94,16 +105,29 @@
     <div class="login-container">
         <h1 class="page-title">Вход в систему</h1>
 
+        {# Отображение ошибок входа (если есть) #}
         {% if errors is defined and errors is not empty %}
             <div class="login-errors">
-                <strong>Обнаружены ошибки:</strong>
-                <ul>
-                    {% for error in errors %}
-                        <li>{{ error }}</li>
-                    {% endfor %}
-                </ul>
+                {# Если errors это массив строк (как было раньше) #}
+                {% if errors|first is not iterable %}
+                    <ul>
+                        {% for error in errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                    {# Если errors это ассоциативный массив (на всякий случай) #}
+                {% else %}
+                    <ul>
+                        {% for field_errors in errors %}
+                            {% for error in field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
         {% endif %}
+
         {# Для отображения flash-сообщений об успехе регистрации #}
         {% for message in app.flashes('login_success') %}
             <div class="alert alert-success" role="alert">

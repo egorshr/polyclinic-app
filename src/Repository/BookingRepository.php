@@ -29,13 +29,9 @@ class BookingRepository extends ServiceEntityRepository
         return $baseDir . '/bookings_' . $userId . '.csv';
     }
 
-    public function saveBooking(Booking $booking, string $storage = 'csv'): void
+    public function saveBooking(Booking $booking): void
     {
-        if ($storage === 'db') {
-            $this->saveToDatabase($booking);
-        } else {
-            $this->saveToCsv($booking);
-        }
+        $this->saveToDatabase($booking);
     }
 
     private function saveToDatabase(Booking $booking): void
@@ -48,37 +44,6 @@ class BookingRepository extends ServiceEntityRepository
         } catch (Exception $e) {
             throw new Exception("Ошибка при сохранении в базу данных: " . $e->getMessage());
         }
-    }
-
-    private function saveToCsv(Booking $booking): void
-    {
-        $filePath = $this->getCsvFilePathForUser($booking->getUserId());
-        $dir = dirname($filePath);
-
-        if (!$this->filesystem->exists($dir)) {
-            $this->filesystem->mkdir($dir, 0775);
-        }
-
-        $isNewFile = !$this->filesystem->exists($filePath);
-        $fileHandle = @fopen($filePath, 'a');
-
-        if ($fileHandle === false) {
-            throw new Exception("Не удалось открыть CSV файл для записи: " . $filePath);
-        }
-
-        if ($isNewFile) {
-            fputcsv($fileHandle, ['name', 'service', 'photographer', 'date', 'user_id']);
-        }
-
-        fputcsv($fileHandle, [
-            $booking->getName(),
-            $booking->getService(),
-            $booking->getPhotographer(),
-            $booking->getDate(),
-            $booking->getUserId()
-        ]);
-
-        fclose($fileHandle);
     }
 
 
@@ -123,62 +88,4 @@ class BookingRepository extends ServiceEntityRepository
         }
     }
 
-    public function getAllBookingsFromCsv(array $filters = [], ?int $userId = null): array
-    {
-        if ($userId === null) {
-            return [];
-        }
-
-        $filePath = $this->getCsvFilePathForUser($userId);
-        if (!$this->filesystem->exists($filePath)) {
-            return [];
-        }
-
-        $fileHandle = @fopen($filePath, 'r');
-        if ($fileHandle === false) {
-            throw new Exception("Не удалось открыть CSV файл для чтения: " . $filePath);
-        }
-
-        fgetcsv($fileHandle);
-
-        $bookings = [];
-        while (($data = fgetcsv($fileHandle)) !== false) {
-            if (count($data) >= 5) {
-                $bookingData = [
-                    'name' => $data[0],
-                    'service' => $data[1],
-                    'photographer' => $data[2],
-                    'date' => $data[3],
-                    'user_id' => (int)$data[4]
-                ];
-                if ($bookingData['user_id'] !== $userId) {
-                    continue;
-                }
-
-                $match = true;
-
-                if (!empty($filters['name']) && stripos($bookingData['name'], $filters['name']) === false) {
-                    $match = false;
-                }
-                if ($match && !empty($filters['service']) && $bookingData['service'] !== $filters['service']) {
-                    $match = false;
-                }
-                if ($match && !empty($filters['photographer']) && $bookingData['photographer'] !== $filters['photographer']) {
-                    $match = false;
-                }
-                if ($match && !empty($filters['date_from']) && $bookingData['date'] < $filters['date_from']) {
-                    $match = false;
-                }
-                if ($match && !empty($filters['date_to']) && $bookingData['date'] > $filters['date_to']) {
-                    $match = false;
-                }
-
-                if ($match) {
-                    $bookings[] = $bookingData;
-                }
-            }
-        }
-        fclose($fileHandle);
-        return array_reverse($bookings);
-    }
 }

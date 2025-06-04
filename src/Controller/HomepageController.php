@@ -13,7 +13,8 @@ class HomepageController extends AbstractController
     public function index(SessionInterface $session): RedirectResponse
     {
         if ($session->has('user_id')) {
-            return $this->redirectToRoute('booking_form_show');
+            // Заменяем 'booking_form_show' на 'visit_form_show'
+            return $this->redirectToRoute('visit_form_show');
         }
         return $this->redirectToRoute('auth_login_form');
     }

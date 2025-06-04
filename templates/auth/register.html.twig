@@ -16,7 +16,7 @@
             max-width: 400px;
             background: white;
             padding: 30px;
-            margin: 100px auto;
+            margin: 50px auto; /* Уменьшил отступ сверху для лучшего вида с большим количеством полей */
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
@@ -37,11 +37,23 @@
         .register-input {
             width: 100%;
             padding: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px; /* Немного уменьшил отступ */
             border-radius: 5px;
             border: 1px solid #ccc;
             box-sizing: border-box;
         }
+        /* Стиль для невалидного поля */
+        .register-input.is-invalid {
+            border-color: #cc0000;
+        }
+        .invalid-feedback {
+            color: #cc0000;
+            font-size: 0.875em;
+            display: block; /* Чтобы сообщение об ошибке было под полем */
+            margin-top: -10px; /* Подвинуть ближе к полю */
+            margin-bottom: 10px;
+        }
+
 
         .register-button {
             background-color: #5c67f2;
@@ -60,7 +72,7 @@
             background-color: #434de2;
         }
 
-        .register-errors {
+        .register-errors-summary { /* Переименовал класс для общих ошибок */
             background-color: #ffe0e0;
             border: 1px solid #cc0000;
             padding: 10px;
@@ -68,7 +80,7 @@
             color: #cc0000;
             border-radius: 4px;
         }
-        .register-errors ul {
+        .register-errors-summary ul {
             padding-left: 20px;
             margin-bottom: 0;
         }
@@ -93,8 +105,9 @@
     <div class="register-container">
         <h1 class="page-title">Регистрация</h1>
 
-        {% if errors is defined and errors is not empty %}
-            <div class="register-errors">
+        {# Отображение общих ошибок, если errors - это простой массив строк (на всякий случай) #}
+        {# {% if errors is defined and errors is not empty and errors|first is not iterable %}
+            <div class="register-errors-summary">
                 <strong>Обнаружены ошибки:</strong>
                 <ul>
                     {% for error in errors %}
@@ -102,22 +115,56 @@
                     {% endfor %}
                 </ul>
             </div>
-        {% endif %}
+        {% endif %} #}
+        {# Теперь errors - это ассоциативный массив, этот блок выше скорее всего не нужен #}
 
         <form action="{{ path('auth_register_handle') }}" method="POST" autocomplete="off">
             <div>
                 <label for="username" class="register-label">Логин</label>
-                <input type="text" id="username" name="username" class="register-input" value="{{ username | default('') }}" required>
+                <input type="text" id="username" name="username" class="register-input {% if errors.username is defined %}is-invalid{% endif %}" value="{{ username | default('') }}" required>
+                {% if errors.username is defined %}
+                    <div class="invalid-feedback">{{ errors.username }}</div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="email" class="register-label">Email</label>
+                <input type="email" id="email" name="email" class="register-input {% if errors.email is defined %}is-invalid{% endif %}" value="{{ email | default('') }}" required>
+                {% if errors.email is defined %}
+                    <div class="invalid-feedback">{{ errors.email }}</div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="firstName" class="register-label">Имя</label>
+                <input type="text" id="firstName" name="firstName" class="register-input {% if errors.firstName is defined %}is-invalid{% endif %}" value="{{ firstName | default('') }}" required>
+                {% if errors.firstName is defined %}
+                    <div class="invalid-feedback">{{ errors.firstName }}</div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="lastName" class="register-label">Фамилия</label>
+                <input type="text" id="lastName" name="lastName" class="register-input {% if errors.lastName is defined %}is-invalid{% endif %}" value="{{ lastName | default('') }}" required>
+                {% if errors.lastName is defined %}
+                    <div class="invalid-feedback">{{ errors.lastName }}</div>
+                {% endif %}
             </div>
 
             <div>
                 <label for="password" class="register-label">Пароль</label>
-                <input type="password" id="password" name="password" class="register-input" required>
+                <input type="password" id="password" name="password" class="register-input {% if errors.password is defined %}is-invalid{% endif %}" required>
+                {% if errors.password is defined %}
+                    <div class="invalid-feedback">{{ errors.password }}</div>
+                {% endif %}
             </div>
 
             <div>
                 <label for="confirm_password" class="register-label">Подтверждение пароля</label>
-                <input type="password" id="confirm_password" name="confirm_password" class="register-input" required>
+                <input type="password" id="confirm_password" name="confirm_password" class="register-input {% if errors.confirm_password is defined %}is-invalid{% endif %}" required>
+                {% if errors.confirm_password is defined %}
+                    <div class="invalid-feedback">{{ errors.confirm_password }}</div>
+                {% endif %}
             </div>
 
             <button type="submit" class="register-button">Зарегистрироваться</button>

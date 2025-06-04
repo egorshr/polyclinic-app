@@ -9,13 +9,9 @@
             <div>
                 <a href="{{ path('form') }}">Форма записи</a>
                 <a href="{{ path('bookings') }}">Все записи</a>
-                {% if storageType == 'csv' %}
-                    <a href="{{ path('migrate') }}">Миграция данных</a>
-                {% endif %}
+
             </div>
-            <div class="storage-info">
-                Хранилище: {{ storageType == 'db' ? 'База данных' : 'CSV файл' }}
-            </div>
+
             <div class="user-info">
                 {% if isLoggedIn %}
                     <span>Пользователь: {{ username|e }} ({{ userRole|e }})</span>
@@ -84,31 +80,25 @@
             <table>
                 <thead>
                 <tr>
-                    {% if storageType == 'db' %}
-                        <th>ID</th>
-                    {% endif %}
+                    <th>ID</th>
                     <th>Имя</th>
                     <th>Услуга</th>
                     <th>Фотограф</th>
                     <th>Дата</th>
-                    {% if storageType == 'db' %}
-                        <th>Дата создания</th>
-                    {% endif %}
+                    <th>Дата создания</th>
+
                 </tr>
                 </thead>
                 <tbody>
                 {% for booking in bookings %}
                     <tr>
-                        {% if storageType == 'db' %}
-                            <td>{{ booking.id|default('') }}</td>
-                        {% endif %}
+                        <td>{{ booking.id|default('') }}</td>
                         <td>{{ booking.name|default('') }}</td>
                         <td>{{ booking.service|default('') }}</td>
                         <td>{{ booking.photographer|default('') }}</td>
                         <td>{{ booking.date|default('') }}</td>
-                        {% if storageType == 'db' %}
-                            <td>{{ booking.created_at|default('') }}</td>
-                        {% endif %}
+                        <td>{{ booking.created_at|default('') }}</td>
+
                     </tr>
                 {% endfor %}
                 </tbody>
@@ -117,9 +107,6 @@
 
         <div class="actions">
             <a href="{{ path('form') }}" class="button">Новая запись</a>
-            {% if storageType == 'csv' %}
-                <a href="{{ path('migrate') }}" class="button">Мигрировать в БД</a>
-            {% endif %}
             <a href="{{ path('generate_pdf') }}" class="button">PDF</a>
             <a href="{{ path('generate_excel') }}" class="button">Excel</a>
             <a href="{{ path('generate_csv') }}" class="button">CSV</a>

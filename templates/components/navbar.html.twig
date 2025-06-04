@@ -1,7 +1,7 @@
-{# templates/partials/_navbar.html.twig #}
+{# templates/components/navbar.html.twig #}
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="{{ path('booking_form_show') }}">Фотостудия</a>
+        <a class="navbar-brand" href="{{ path('visit_form_show') }}">Поликлиника</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -9,20 +9,25 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 {% if app.session.get('user_id') %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ path('booking_form_show') }}">Форма бронирования</a>
+                        <a class="nav-link" href="{{ path('visit_form_show') }}">Запись на прием</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ path('booking_list') }}">Мои бронирования</a>
+                        <a class="nav-link" href="{{ path('visit_list') }}">Мои записи</a>
                     </li>
-
+                    {# {% if is_granted('ROLE_ADMIN') %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ path('admin_dashboard') }}">Админ панель</a>
+                        </li>
+                    {% endif %} #}
                 {% endif %}
             </ul>
             <ul class="navbar-nav">
                 {% if app.session.get('user_id') %}
                     <li class="nav-item">
-                        <span class="nav-link me-3">
+                        {# Оборачиваем имя пользователя в ссылку на редактирование профиля #}
+                        <a class="nav-link me-3" href="{{ path('patient_profile_edit_form') }}">
                             {{ app.session.get('username') }}
-                        </span>
+                        </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ path('auth_logout') }}">Выйти</a>

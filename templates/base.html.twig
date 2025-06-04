@@ -4,22 +4,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Фотостудия{% endblock %}</title>
+    <title>{% block title %}Поликлиника{% endblock %}</title> {# ИЗМЕНЕНО #}
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
 
     {% block stylesheets %}{% endblock %}
 </head>
 <body>
- {% include 'components/navbar.html.twig' %}
+{% include 'components/navbar.html.twig' %}
 
 <div class="container mt-4">
-    {% for label, messages in app.flashes %}
+    {# Отображение flash-сообщений из AuthController и VisitController #}
+    {% for label, messages in app.flashes(['success', 'error', 'warning', 'info', 'login_success', 'form_errors', 'register_errors']) %}
         {% for message in messages %}
-            <div class="alert alert-{{ label }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
+            {# Если сообщение - это массив (как form_errors из AuthController), обрабатываем его отдельно #}
+            {% if message is iterable and label == 'form_errors' or label == 'register_errors' %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert"> {# Используем danger для form_errors #}
+                    <strong>Обнаружены ошибки:</strong>
+                    <ul>
+                        {% for field, errorText in message %}
+                            <li>{{ field|capitalize }}: {{ errorText }}</li>
+                        {% else %}
+                            {% for single_error in message %} {# Если это простой массив ошибок #}
+                                <li>{{ single_error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% else %}
+                <div class="alert alert-{{ label == 'login_success' or label == 'success' ? 'success' : (label == 'error' ? 'danger' : (label == 'form_errors' or label == 'register_errors' ? 'danger' : label)) }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endif %}
         {% endfor %}
     {% endfor %}
 

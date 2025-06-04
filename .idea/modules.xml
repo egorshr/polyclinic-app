@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/photo-studio-symfony.iml" filepath="$PROJECT_DIR$/.idea/photo-studio-symfony.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/polyclinic.iml" filepath="$PROJECT_DIR$/.idea/polyclinic.iml" />
     </modules>
   </component>
 </project>

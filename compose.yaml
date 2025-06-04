@@ -17,6 +17,7 @@ services:
     restart: always
     container_name: db_symfony
     environment:
+      MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_DATABASE: mydb
       MYSQL_USER: user
       MYSQL_PASSWORD: pass

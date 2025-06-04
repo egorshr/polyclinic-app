@@ -1,6 +1,7 @@
+{# templates/visit/success.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block title %}Успешно - {{ parent() }}{% endblock %}
+{% block title %}Запись оформлена - {{ parent() }}{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -11,7 +12,6 @@
             margin: 0;
             padding: 0;
         }
-
         .success-container {
             max-width: 500px;
             background: white;
@@ -21,18 +21,15 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
-
         .success-icon-custom {
             font-size: 48px;
             color: #4caf50;
             margin-bottom: 20px;
         }
-
         .success-container h1.page-title {
             color: #333;
             margin-bottom: 20px;
         }
-
         .success-nav-links {
             margin-top: 30px;
             display: flex;
@@ -40,7 +37,6 @@
             flex-wrap: wrap;
             gap: 10px;
         }
-
         .success-button {
             display: inline-block;
             padding: 10px 20px;
@@ -51,7 +47,6 @@
             font-weight: bold;
             transition: background-color 0.2s;
         }
-
         .success-button:hover {
             background-color: #434de2;
         }
@@ -60,13 +55,12 @@
 
 {% block body %}
     <div class="success-container">
-
         <div class="success-icon-custom">✓</div>
-        <h1 class="page-title">Запись успешно отправлена!</h1>
+        <h1 class="page-title">Вы успешно записаны на прием!</h1>
 
         <div class="success-nav-links">
-            <a href="{{ path('booking_form_show') }}" class="success-button">Новая запись</a>
-            <a href="{{ path('booking_list') }}" class="success-button">Все записи</a>
+            <a href="{{ path('visit_form_show') }}" class="success-button">Записаться еще раз</a>
+            <a href="{{ path('visit_list') }}" class="success-button">Мои записи</a>
         </div>
     </div>
 {% endblock %}

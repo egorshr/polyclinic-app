@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Отчет по записям на прием</title>
+    <style>
+        body {
+            font-family: DejaVu Sans, sans-serif; /* Важно для кириллицы в mPDF */
+            font-size: 9px; /* Уменьшил для большего количества информации */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px; /* Уменьшил padding */
+            text-align: left;
+            word-wrap: break-word; /* Перенос длинных слов */
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+<h1>Отчет по записям на прием</h1>
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Пациент</th>
+        <th>Врач</th>
+        <th>Специальность</th>
+        <th>Дата и Время</th>
+        <th>Статус</th>
+        {# <th>Услуга</th> #}
+    </tr>
+    </thead>
+    <tbody>
+    {% if visits is empty %}
+        <tr>
+            <td colspan="6" style="text-align: center;">Нет данных для отображения.</td> {# Увеличил colspan #}
+        </tr>
+    {% else %}
+        {# visits здесь - это массив данных из VisitRepository::findVisitsByCriteriaForReport #}
+        {% for visit_data in visits %}
+            <tr>
+                <td>{{ visit_data.id | default('') }}</td>
+                <td>{{ visit_data.patientName | default('') }}</td>
+                <td>{{ visit_data.employeeName | default('') }}</td>
+                <td>{{ visit_data.specialtyName | default('') }}</td>
+                <td>{{ visit_data.dateTime | default('') }}</td> {# Уже отформатировано в репозитории #}
+                <td>{{ visit_data.status | default('') }}</td>    {# Уже переведено в репозитории #}
+                {# <td>{{ visit_data.serviceName | default('') }}</td> #}
+            </tr>
+        {% endfor %}
+    {% endif %}
+    </tbody>
+</table>
+</body>
+</html>
