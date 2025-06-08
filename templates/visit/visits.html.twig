@@ -1,79 +1,186 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Просмотр записей{% endblock %}
+{% block title %}Просмотр записей на прием - {{ parent() }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    {# Используем стили, которые уже были в этом файле (они выглядят подходящими) #}
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f8;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .container {
+            max-width: 1140px;
+            margin: 30px auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            padding: 30px;
+        }
+        h1.page-title {
+            margin-bottom: 20px;
+            font-size: 28px;
+            color: #222;
+        }
+        .filter-panel {
+            background: #fafafa;
+            border: 1px solid #e0e0e5;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .filter-panel h3 { margin-top: 0; font-size: 20px; color: #444; }
+        .filter-group { display: flex; flex-direction: column; margin-bottom: 15px; }
+        .filter-group label { margin-bottom: 6px; font-size: 14px; color: #555; }
+        .filter-group input[type="text"],
+        .filter-group input[type="date"],
+        .filter-group input[type="datetime-local"], /* Добавлено для нового типа */
+        .filter-group select {
+            padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; width: 100%;
+        }
+        .filter-row { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
+        .filter-row .filter-group { flex: 1 1 200px; margin-bottom: 0; }
+        .filter-row .filter-group.date-filter { max-width: 240px; }
+        .filter-buttons { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+        .apply-button, .reset-button, .action-button {
+            text-decoration: none; border: none; padding: 10px 18px; border-radius: 4px; font-size: 14px; cursor: pointer; transition: background-color 0.2s; display: inline-block;
+        }
+        .apply-button { background-color: #6a4c93; color: #fff; }
+        .apply-button:hover { background-color: #593b7a; }
+        .reset-button { background-color: transparent; color: #6a4c93; border: 1px solid #6a4c93; }
+        .reset-button:hover { color: #593b7a; background-color: rgba(105, 73, 146, 0.1); }
+        .action-button { background-color: #6a4c93; color: #fff; }
+        .action-button:hover { background-color: #593b7a; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9rem; }
+        thead th { text-align: left; padding: 10px 8px; background: #f0f0f5; font-weight: 600; border-bottom: 2px solid #e0e0e5; }
+        tbody td { padding: 10px 8px; border-bottom: 1px solid #e0e0e5; }
+        .no-records { text-align: center; color: #777; padding: 30px 0; font-size: 16px; border: 1px dashed #ccc; border-radius: 4px; background-color: #f9f9f9; }
+        .actions-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+        .report-actions { margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border: 1px solid #eee; border-radius: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px;}
+        .report-actions span { font-weight: bold; margin-right: 10px; }
+    </style>
+{% endblock %}
 
 {% block body %}
     <div class="container">
-        <h1>Просмотр записей</h1>
-        <div class="navigation">
-            <div>
-                <a href="{{ path('form') }}">Форма записи</a>
-                <a href="{{ path('bookings') }}">Все записи</a>
+        <h1 class="page-title">Просмотр записей на прием</h1>
 
-            </div>
-
-            <div class="user-info">
-                {% if isLoggedIn %}
-                    <span>Пользователь: {{ username|e }} ({{ userRole|e }})</span>
-                    <a href="{{ path('logout') }}">Выйти</a>
-                {% else %}
-                    <a href="{{ path('login') }}">Войти</a>
-                    <a href="{{ path('register') }}">Регистрация</a>
-                {% endif %}
-            </div>
-        </div>
-
+        {# Панель фильтров адаптирована под переменные из VisitController #}
         <div class="filter-panel">
             <h3>Фильтры</h3>
-            <form method="get" action="{{ path('bookings') }}">
-                <input type="hidden" name="route" value="bookings">
-                <div class="filter-group">
-                    <label for="filter_name">Имя</label>
-                    <input type="text" id="filter_name" name="filter_name" value="{{ filters.name|default('') }}">
+            <form method="get" action="{{ path('visit_list') }}"> {# Путь к текущей странице #}
+                <div class="filter-row">
+                    {# Фильтр по Пациенту (только для Админа/Врача) #}
+                    {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_DOCTOR') %}
+                        <div class="filter-group">
+                            <label for="filter_patient_name">Пациент (ФИО)</label>
+                            <input type="text" id="filter_patient_name" name="filter_patient_name" value="{{ filters.patient_name | default('') }}">
+                        </div>
+                    {% endif %}
+
+                    {# Фильтр по Специальности #}
+                    <div class="filter-group">
+                        <label for="filter_specialty_id">Специальность</label>
+                        <select id="filter_specialty_id" name="filter_specialty_id">
+                            <option value="">Все специальности</option>
+                            {% for specialty in availableSpecialties %} {# Используем availableSpecialties #}
+                                <option value="{{ specialty.id }}" {{ (filters.specialty_id | default('') == specialty.id) ? 'selected' : '' }}>
+                                    {{ specialty.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {# Фильтр по Врачу (только для Админа) #}
+                    {% if is_granted('ROLE_ADMIN') %}
+                        <div class="filter-group">
+                            <label for="filter_employee_id">Врач</label>
+                            <select id="filter_employee_id" name="filter_employee_id">
+                                <option value="">Все врачи</option>
+                                {% for employee in availableEmployees %} {# Используем availableEmployees #}
+                                    <option value="{{ employee.id }}" {{ (filters.employee_id | default('') == employee.id) ? 'selected' : '' }}>
+                                        {{ employee.fullName }} ({{ employee.specialty.name }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% endif %}
                 </div>
-                <div class="filter-group">
-                    <label for="filter_service">Услуга</label>
-                    <select id="filter_service" name="filter_service">
-                        <option value="">Все услуги</option>
-                        {% for service in availableServices %}
-                            <option value="{{ service }}"
-                                    {% if filters.service is defined and filters.service == service %}selected{% endif %}>{{ service }}</option>
-                        {% endfor %}
-                    </select>
+                <div class="filter-row">
+                    {# Фильтр по Мед. Услуге #}
+                    <div class="filter-group">
+                        <label for="filter_service_id">Медицинская услуга</label>
+                        <select id="filter_service_id" name="filter_service_id">
+                            <option value="">Все услуги</option>
+                            {% for service_item in availableServices %} {# Используем availableServices #}
+                                <option value="{{ service_item.id }}" {{ (filters.service_id | default('') == service_item.id) ? 'selected' : '' }}>
+                                    {{ service_item.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {# Фильтр по Статусу визита #}
+                    <div class="filter-group">
+                        <label for="filter_status">Статус визита</label>
+                        <select id="filter_status" name="filter_status">
+                            <option value="">Все статусы</option>
+                            {% for status_case in availableStatuses %} {# Используем availableStatuses #}
+                                <option value="{{ status_case.value }}" {{ (filters.status | default('') == status_case.value) ? 'selected' : '' }}>
+                                    {# Тебе понадобится фильтр или функция для перевода значения enum в читаемый текст #}
+                                    {# Например, {{ status_case.value|humanize_visit_status }} или создай такой фильтр #}
+                                    {{ status_case.name|replace({'_': ' '})|capitalize }} {# Простой вариант, если имена enum подходящие #}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
-                <div class="filter-group">
-                    <label for="filter_photographer">Фотограф</label>
-                    <select id="filter_photographer" name="filter_photographer">
-                        <option value="">Все фотографы</option>
-                        {% for photographer in availablePhotographers %}
-                            <option value="{{ photographer }}"
-                                    {% if filters.photographer is defined and filters.photographer == photographer %}selected{% endif %}>{{ photographer }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="filter-group" style="max-width: 200px;">
-                    <label for="filter_date_from">Дата от</label>
-                    <input type="date" id="filter_date_from" name="filter_date_from"
-                           value="{{ filters.date_from|default('') }}">
-                </div>
-                <div class="filter-group" style="max-width: 200px;">
-                    <label for="filter_date_to">Дата до</label>
-                    <input type="date" id="filter_date_to" name="filter_date_to"
-                           value="{{ filters.date_to|default('') }}">
+                <div class="filter-row">
+                    <div class="filter-group date-filter">
+                        <label for="filter_date_from">Дата и время от</label>
+                        <input type="datetime-local" id="filter_date_from" name="filter_date_from" {# Изменено на datetime-local #}
+                               value="{{ filters.date_from | default('') }}">
+                    </div>
+                    <div class="filter-group date-filter">
+                        <label for="filter_date_to">Дата и время до</label>
+                        <input type="datetime-local" id="filter_date_to" name="filter_date_to" {# Изменено на datetime-local #}
+                               value="{{ filters.date_to | default('') }}">
+                    </div>
                 </div>
                 <div class="filter-buttons">
                     <button type="submit" class="apply-button">Применить фильтры</button>
-                    <a href="{{ path('bookings') }}" class="reset-button">Сбросить</a>
+                    <a href="{{ path('visit_list') }}" class="reset-button">Сбросить</a>
                 </div>
             </form>
         </div>
 
-        {% if bookings is empty %}
+        {# Кнопки отчетов #}
+        <div class="report-actions">
+            <span>Отчеты:</span>
+            <a href="{{ path('visit_report_pdf', app.request.query.all) }}" class="action-button" style="background-color: #dc3545;">PDF</a>
+            <a href="{{ path('visit_report_excel', app.request.query.all) }}" class="action-button" style="background-color: #198754;">Excel</a>
+            <a href="{{ path('visit_report_csv', app.request.query.all) }}" class="action-button" style="background-color: #0dcaf0;">CSV</a>
+        </div>
+
+        {# Отображение записей #}
+        {% if visits is empty %} {# Используем visits #}
             <div class="no-records">
-                {% if filters|filter(v => v is not empty) is not empty %}
-                    По заданным критериям записей не найдено
+                {% set hasActiveFilters = false %}
+                {% for filter_value in filters %}
+                    {% if filter_value is not empty %}
+                        {% set hasActiveFilters = true %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if hasActiveFilters %}
+                    По заданным критериям записей не найдено.
                 {% else %}
-                    Записей не найдено
+                    Записей на прием не найдено.
                 {% endif %}
             </div>
         {% else %}
@@ -81,35 +188,43 @@
                 <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Имя</th>
-                    <th>Услуга</th>
-                    <th>Фотограф</th>
-                    <th>Дата</th>
-                    <th>Дата создания</th>
-
+                    {# Показываем пациента только админу или врачу #}
+                    {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_DOCTOR') %}
+                        <th>Пациент</th>
+                    {% endif %}
+                    <th>Врач</th>
+                    <th>Специальность</th>
+                    <th>Дата и время</th>
+                    <th>Статус</th>
+                    {# <th>Услуга (если нужно отображать)</th> #}
+                    {# <th>Действия (если нужны)</th> #}
                 </tr>
                 </thead>
                 <tbody>
-                {% for booking in bookings %}
+                {% for visit_item in visits %} {# Итерируемся по visits, visit_item - это объект Visit #}
                     <tr>
-                        <td>{{ booking.id|default('') }}</td>
-                        <td>{{ booking.name|default('') }}</td>
-                        <td>{{ booking.service|default('') }}</td>
-                        <td>{{ booking.photographer|default('') }}</td>
-                        <td>{{ booking.date|default('') }}</td>
-                        <td>{{ booking.created_at|default('') }}</td>
-
+                        <td>{{ visit_item.id }}</td>
+                        {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_DOCTOR') %}
+                            <td>{{ visit_item.patient.fullName | default('Н/Д') }}</td>
+                        {% endif %}
+                        <td>{{ visit_item.employee.fullName | default('Н/Д') }}</td>
+                        <td>{{ visit_item.employee.specialty.name | default('Н/Д') }}</td>
+                        <td>{{ visit_item.dateAndTime ? visit_item.dateAndTime|date('d.m.Y H:i') : 'Н/Д' }}</td>
+                        <td>
+                            {# Отображение статуса - как в примере выше или через твой фильтр #}
+                            {{ visit_item.status.name|replace({'_': ' '})|capitalize }}
+                        </td>
+                        {# <td>{{ visit_item.medicalService.name | default('') }}</td> #} {# Если есть связь с услугой #}
+                        {# <td><a href="#">Действие</a></td> #}
                     </tr>
                 {% endfor %}
                 </tbody>
             </table>
         {% endif %}
 
-        <div class="actions">
-            <a href="{{ path('form') }}" class="button">Новая запись</a>
-            <a href="{{ path('generate_pdf') }}" class="button">PDF</a>
-            <a href="{{ path('generate_excel') }}" class="button">Excel</a>
-            <a href="{{ path('generate_csv') }}" class="button">CSV</a>
+        {# Кнопка для создания новой записи #}
+        <div class="actions-footer">
+            <a href="{{ path('visit_form_show') }}" class="action-button">Новая запись</a>
         </div>
     </div>
 {% endblock %}

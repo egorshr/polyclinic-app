@@ -17,6 +17,7 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException; // Для 
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 
+
 class AuthController extends AbstractController
 {
     private UserRepository $userRepository;

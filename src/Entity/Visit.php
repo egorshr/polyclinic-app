@@ -4,6 +4,8 @@ namespace App\Entity;
 
 use App\Enum\VisitStatus;
 use App\Repository\VisitRepository;
+use Doctrine\Common\Collections\ArrayCollection; // Добавлено
+use Doctrine\Common\Collections\Collection;      // Добавлено
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use DateTimeImmutable;
@@ -19,7 +21,7 @@ class Visit
 
     #[ORM\ManyToOne(targetEntity: Discount::class, inversedBy: 'visits')]
     #[ORM\JoinColumn(name: 'discount_id', referencedColumnName: 'discount_id', nullable: true)]
-    private ?Discount $discount;
+    private ?Discount $discount = null; // Изменено на nullable, если скидка не всегда есть
 
     #[ORM\ManyToOne(targetEntity: Patient::class, inversedBy: 'visits')]
     #[ORM\JoinColumn(name: 'patient_id', referencedColumnName: 'id', nullable: false)]
@@ -35,12 +37,11 @@ class Visit
     #[ORM\Column(length: 10, enumType: VisitStatus::class)]
     private VisitStatus $status;
 
-    // Если в рамках одного визита может быть оказано несколько услуг,
-    // нужна связь ManyToMany с Service через промежуточную таблицу.
-    // Например:
-    // #[ORM\ManyToMany(targetEntity: Service::class)]
-    // #[ORM\JoinTable(name: 'visit_services')]
-    // private Collection $servicesRendered;
+    #[ORM\ManyToMany(targetEntity: Service::class, inversedBy: "visits")] // Связь ManyToMany
+    #[ORM\JoinTable(name: 'visit_services')]                               // Имя промежуточной таблицы
+    #[ORM\JoinColumn(name: 'visit_id', referencedColumnName: 'id', onDelete: 'CASCADE')] // onDelete для каскадного удаления связей
+    #[ORM\InverseJoinColumn(name: 'service_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    private Collection $renderedServices; // Коллекция оказанных услуг
 
     public function __construct(
         Patient $patient,
@@ -48,13 +49,14 @@ class Visit
         DateTimeImmutable $dateAndTime,
         VisitStatus $status,
         ?Discount $discount = null
+        // Услуги теперь добавляются через addRenderedService, а не через конструктор напрямую
     ) {
         $this->patient = $patient;
         $this->employee = $employee;
         $this->dateAndTime = $dateAndTime;
         $this->status = $status;
         $this->discount = $discount;
-        // $this->servicesRendered = new ArrayCollection();
+        $this->renderedServices = new ArrayCollection(); // Инициализация коллекции
     }
 
     public function getId(): ?int
@@ -117,5 +119,27 @@ class Visit
         return $this;
     }
 
-    // Геттеры/сеттеры для $servicesRendered, если они добавлены
+    /**
+     * @return Collection<int, Service>
+     */
+    public function getRenderedServices(): Collection
+    {
+        return $this->renderedServices;
+    }
+
+    public function addRenderedService(Service $service): static
+    {
+        if (!$this->renderedServices->contains($service)) {
+            $this->renderedServices->add($service);
+            // Если в Service есть $visits, то $service->addVisit($this); но это не обязательно здесь
+        }
+        return $this;
+    }
+
+    public function removeRenderedService(Service $service): static
+    {
+        $this->renderedServices->removeElement($service);
+        // Если в Service есть $visits, то $service->removeVisit($this);
+        return $this;
+    }
 }

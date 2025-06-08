@@ -277,13 +277,11 @@ class VisitController extends AbstractController
     #[Route('/list', name: 'visit_list', methods: ['GET'])]
     public function showVisits(Request $request): Response
     {
-
-
         if ($redirect = $this->requireLogin()) {
             return $redirect;
         }
 
-        $currentUser = $this->getCurrentUser(); // Гарантированно не null после requireLogin
+        $currentUser = $this->getCurrentUser();
         $patientProfile = $currentUser->getPatientProfile();
         $employeeProfile = $currentUser->getEmployeeProfile();
 
@@ -298,7 +296,6 @@ class VisitController extends AbstractController
         ];
 
         $criteria = [];
-        // Заполняем $criteria из $filters как и раньше
         if (!empty($filters['date_from'])) $criteria['dateFrom'] = new DateTimeImmutable($filters['date_from']);
         if (!empty($filters['date_to'])) $criteria['dateTo'] = (new DateTimeImmutable($filters['date_to']))->setTime(23, 59, 59);
         if (!empty($filters['employee_id'])) $criteria['employee'] = (int)$filters['employee_id'];
@@ -308,22 +305,20 @@ class VisitController extends AbstractController
             $criteria['status'] = $statusEnum;
         }
 
+        $canViewVisits = false;
 
-        $canViewVisits = false; // Флаг, может ли пользователь вообще просматривать записи
-
-        if ($this->isGranted('ROLE_ADMIN')) {
+        // ИСПРАВЛЕНО: Используем проверку ролей через сессию вместо isGranted()
+        if ($this->hasRole('ROLE_ADMIN')) {
             $canViewVisits = true;
-            // Администратор видит все, может фильтровать по имени пациента
             if (!empty($filters['patient_name'])) $criteria['patientName'] = $filters['patient_name'];
-        } elseif ($this->isGranted('ROLE_DOCTOR') && $employeeProfile) {
+        } elseif ($this->hasRole('ROLE_DOCTOR') && $employeeProfile) {
             $canViewVisits = true;
             $criteria['employee'] = $employeeProfile->getId();
             if (!empty($filters['patient_name'])) $criteria['patientName'] = $filters['patient_name'];
-        } elseif ($this->isGranted('ROLE_PATIENT') && $patientProfile) {
+        } elseif (($this->hasRole('ROLE_PATIENT') || $this->hasRole('ROLE_USER')) && $patientProfile) {
             $canViewVisits = true;
             $criteria['patient'] = $patientProfile->getId();
-            // Пациент не может фильтровать по имени другого пациента или по врачу/специальности (если не предусмотрено)
-            // Убираем фильтры, которые не должны быть доступны пациенту
+            // Пациент не может фильтровать по имени другого пациента
             unset($criteria['patientName'], $criteria['employee'], $criteria['specialty']);
         }
 
@@ -333,18 +328,11 @@ class VisitController extends AbstractController
                 $visits = $this->visitRepository->findVisitsByCriteria($criteria);
             } catch (Exception $e) {
                 $this->addFlash('error', "Ошибка при загрузке записей на прием: " . $e->getMessage());
-                // $visits останется пустым
             }
         } else {
-            // Если $canViewVisits остался false, значит, пользователь залогинен,
-            // но его роль или состояние профиля не позволяют видеть записи.
-            // Это более специфичная ситуация, чем просто "не удалось определить права".
-            // Можно либо ничего не показывать, либо дать более точное сообщение.
-            // Например, если это пользователь с ROLE_USER, но без профиля пациента/врача.
-            // Для простоты, если пользователь не админ, не врач с профилем и не пациент с профилем,
-            // он не увидит записи. Сообщение "Записей не найдено" будет выведено шаблоном.
-            // Если же нужно явное сообщение об отсутствии прав, то:
-            // $this->addFlash('info', 'У вас нет прав для просмотра списка записей, или ваш профиль не настроен.');
+            // Добавим отладочную информацию
+            $currentRole = $this->session->get('role');
+            $this->addFlash('info', "Текущая роль: $currentRole. Профиль пациента: " . ($patientProfile ? 'есть' : 'нет') . ". Профиль врача: " . ($employeeProfile ? 'есть' : 'нет'));
         }
 
         return $this->render('visit/list.html.twig', [
@@ -359,14 +347,13 @@ class VisitController extends AbstractController
 
     private function getFilteredVisits(Request $request): array
     {
-        // Логика аналогична showVisits, но только для получения данных
         $currentUser = $this->getCurrentUser();
         if (!$currentUser) return [];
 
         $patientProfile = $currentUser->getPatientProfile();
         $employeeProfile = $currentUser->getEmployeeProfile();
 
-        $filters = [ /* ... как в showVisits ... */
+        $filters = [
             'patient_name' => $request->query->get('filter_patient_name', ''),
             'employee_id' => $request->query->get('filter_employee_id', ''),
             'specialty_id' => $request->query->get('filter_specialty_id', ''),
@@ -386,20 +373,20 @@ class VisitController extends AbstractController
             $criteria['status'] = $statusEnum;
         }
 
-
-        if ($this->isGranted('ROLE_PATIENT') && $patientProfile) {
+        // ИСПРАВЛЕНО: Используем проверку ролей через сессию
+        if ($this->hasRole('ROLE_PATIENT') && $patientProfile) {
             $criteria['patient'] = $patientProfile->getId();
-        } elseif ($this->isGranted('ROLE_DOCTOR') && $employeeProfile) {
+        } elseif ($this->hasRole('ROLE_DOCTOR') && $employeeProfile) {
             $criteria['employee'] = $employeeProfile->getId();
             if (!empty($filters['patient_name'])) $criteria['patientName'] = $filters['patient_name'];
-        } elseif ($this->isGranted('ROLE_ADMIN')) {
+        } elseif ($this->hasRole('ROLE_ADMIN')) {
             if (!empty($filters['patient_name'])) $criteria['patientName'] = $filters['patient_name'];
         } else {
             return [];
         }
 
         try {
-            return $this->visitRepository->findVisitsByCriteriaForReport($criteria); // Метод может возвращать массив данных, а не сущностей
+            return $this->visitRepository->findVisitsByCriteriaForReport($criteria);
         } catch (Exception $e) {
             $this->addFlash('error', "Ошибка при получении отфильтрованных записей для отчета: " . $e->getMessage());
             return [];
@@ -530,5 +517,14 @@ class VisitController extends AbstractController
         $response->headers->set('Content-Type', 'text/csv; charset=utf-8'); // Добавляем charset
         $response->headers->set('Content-Disposition', 'attachment; filename="visits_report.csv"');
         return $response;
+    }
+
+    private function hasRole(string $role): bool
+    {
+        $sessionRole = strtoupper((string)$this->session->get('role'));
+        $targetRole = strtoupper($role);
+        if (!str_starts_with($sessionRole, 'ROLE_')) $sessionRole = 'ROLE_' . $sessionRole;
+        if (!str_starts_with($targetRole, 'ROLE_')) $targetRole = 'ROLE_' . $targetRole;
+        return $this->session->has('role') && $sessionRole === $targetRole;
     }
 }
