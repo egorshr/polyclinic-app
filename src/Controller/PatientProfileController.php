@@ -155,7 +155,7 @@ class PatientProfileController extends AbstractController
             return $this->redirectToRoute('patient_profile_create_form');
         }
 
-        return $this->render('patient_profile/view.html.twig', [
+        return $this->render('patient_profile/form.html.twig', [
             'patient' => $patient,
         ]);
     }

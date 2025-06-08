@@ -307,7 +307,7 @@ class VisitController extends AbstractController
 
         $canViewVisits = false;
 
-        // ИСПРАВЛЕНО: Используем проверку ролей через сессию вместо isGranted()
+        // ИСПРАВЛЕНО: Разрешаем пациентам фильтровать по специальности, врачу и услуге
         if ($this->hasRole('ROLE_ADMIN')) {
             $canViewVisits = true;
             if (!empty($filters['patient_name'])) $criteria['patientName'] = $filters['patient_name'];
@@ -318,8 +318,9 @@ class VisitController extends AbstractController
         } elseif (($this->hasRole('ROLE_PATIENT') || $this->hasRole('ROLE_USER')) && $patientProfile) {
             $canViewVisits = true;
             $criteria['patient'] = $patientProfile->getId();
-            // Пациент не может фильтровать по имени другого пациента
-            unset($criteria['patientName'], $criteria['employee'], $criteria['specialty']);
+            // Пациент может фильтровать свои записи по врачу, специальности и услуге
+            // Удаляем только возможность фильтрации по имени другого пациента
+            unset($criteria['patientName']);
         }
 
         $visits = [];
@@ -373,9 +374,10 @@ class VisitController extends AbstractController
             $criteria['status'] = $statusEnum;
         }
 
-        // ИСПРАВЛЕНО: Используем проверку ролей через сессию
+        // ИСПРАВЛЕНО: Разрешаем пациентам использовать все фильтры для своих записей
         if ($this->hasRole('ROLE_PATIENT') && $patientProfile) {
             $criteria['patient'] = $patientProfile->getId();
+            // НЕ удаляем фильтры по employee, specialty, service
         } elseif ($this->hasRole('ROLE_DOCTOR') && $employeeProfile) {
             $criteria['employee'] = $employeeProfile->getId();
             if (!empty($filters['patient_name'])) $criteria['patientName'] = $filters['patient_name'];
