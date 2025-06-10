@@ -1,11 +1,17 @@
 {# templates/visit/list.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block title %}Просмотр записей на прием - {{ parent() }}{% endblock %}
+{% block title %}
+    {% if app.session.get('role') == 'ROLE_ADMIN' %}
+        Все записи на прием
+    {% else %}
+        Просмотр моих записей
+    {% endif %}
+    - {{ parent() }}
+{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
-    {# Стили можно скопировать из booking/list.html.twig и при необходимости адаптировать #}
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -14,19 +20,22 @@
             padding: 0;
             color: #333;
         }
+
         .container {
-            max-width: 1140px; /* Шире для большего количества информации */
-            margin: 30px auto; /* Уменьшил отступ */
+            max-width: 1200px; /* Немного шире для новой колонки */
+            margin: 30px auto;
             background: #fff;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             padding: 30px;
         }
+
         h1.page-title {
             margin-bottom: 20px;
             font-size: 28px;
             color: #222;
         }
+
         .filter-panel {
             background: #fafafa;
             border: 1px solid #e0e0e5;
@@ -34,56 +43,242 @@
             padding: 20px;
             margin-bottom: 30px;
         }
-        .filter-panel h3 { margin-top: 0; font-size: 20px; color: #444; }
-        .filter-group { display: flex; flex-direction: column; margin-bottom: 15px; }
-        .filter-group label { margin-bottom: 6px; font-size: 14px; color: #555; }
+
+        .filter-panel h3 {
+            margin-top: 0;
+            font-size: 20px;
+            color: #444;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+        }
+
+        .filter-group label {
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #555;
+        }
+
         .filter-group input[type="text"],
         .filter-group input[type="date"],
         .filter-group input[type="datetime-local"],
         .filter-group select {
-            padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%;
         }
-        .filter-row { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
-        .filter-row .filter-group { flex: 1 1 200px; margin-bottom: 0; }
-        .filter-row .filter-group.date-filter { max-width: 240px; } /* Для datetime-local */
-        .filter-buttons { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
-        .apply-button, .reset-button, .action-button {
-            text-decoration: none; border: none; padding: 10px 18px; border-radius: 4px; font-size: 14px; cursor: pointer; transition: background-color 0.2s; display: inline-block;
-        }
-        .apply-button { background-color: #6a4c93; color: #fff; }
-        .apply-button:hover { background-color: #593b7a; }
-        .reset-button { background-color: transparent; color: #6a4c93; border: 1px solid #6a4c93; }
-        .reset-button:hover { color: #593b7a; background-color: rgba(105, 73, 146, 0.1); }
-        .action-button { background-color: #6a4c93; color: #fff; }
-        .action-button:hover { background-color: #593b7a; }
 
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9rem; }
-        thead th { text-align: left; padding: 10px 8px; background: #f0f0f5; font-weight: 600; border-bottom: 2px solid #e0e0e5; }
-        tbody td { padding: 10px 8px; border-bottom: 1px solid #e0e0e5; }
-        .no-records { text-align: center; color: #777; padding: 30px 0; font-size: 16px; border: 1px dashed #ccc; border-radius: 4px; background-color: #f9f9f9; }
-        .actions-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
-        .report-actions { margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border: 1px solid #eee; border-radius: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px;}
-        .report-actions span { font-weight: bold; margin-right: 10px; }
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .filter-row .filter-group {
+            flex: 1 1 200px;
+            margin-bottom: 0;
+        }
+
+        .filter-row .filter-group.date-filter {
+            max-width: 240px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .apply-button, .reset-button, .action-button {
+            text-decoration: none;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: inline-block;
+        }
+
+        .apply-button {
+            background-color: #6a4c93;
+            color: #fff;
+        }
+
+        .apply-button:hover {
+            background-color: #593b7a;
+        }
+
+        .reset-button {
+            background-color: transparent;
+            color: #6a4c93;
+            border: 1px solid #6a4c93;
+        }
+
+        .reset-button:hover {
+            color: #593b7a;
+            background-color: rgba(105, 73, 146, 0.1);
+        }
+
+        .action-button {
+            background-color: #6a4c93;
+            color: #fff;
+        }
+
+        .action-button:hover {
+            background-color: #593b7a;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 10px 8px;
+            background: #f0f0f5;
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e5;
+        }
+
+        tbody td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e0e0e5;
+            vertical-align: top; /* Для выравнивания, если услуги в несколько строк */
+        }
+
+        .service-list {
+            padding-left: 15px;
+            margin: 0;
+            font-size: 0.85em;
+        }
+        .service-list li {
+            margin-bottom: 2px;
+        }
+
+        .no-records {
+            text-align: center;
+            color: #777;
+            padding: 30px 0;
+            font-size: 16px;
+            border: 1px dashed #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .actions-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .report-actions {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .report-actions span {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .pagination-summary {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .pagination {
+            display: flex;
+            padding-left: 0;
+            list-style: none;
+            margin: 0;
+        }
+        .pagination .page-item.disabled .page-link {
+            color: #6c757d;
+            pointer-events: none;
+            background-color: #fff;
+            border-color: #dee2e6;
+        }
+        .pagination .page-item.active .page-link {
+            z-index: 3;
+            color: #fff;
+            background-color: #6a4c93;
+            border-color: #6a4c93;
+        }
+        .pagination .page-link {
+            position: relative;
+            display: block;
+            padding: 0.375rem 0.75rem;
+            margin-left: -1px;
+            line-height: 1.25;
+            color: #6a4c93;
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            text-decoration: none;
+        }
+        .pagination .page-link:hover {
+            z-index: 2;
+            color: #593b7a;
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+        }
+        .pagination .page-item:first-child .page-link {
+            border-top-left-radius: 0.25rem;
+            border-bottom-left-radius: 0.25rem;
+        }
+        .pagination .page-item:last-child .page-link {
+            border-top-right-radius: 0.25rem;
+            border-bottom-right-radius: 0.25rem;
+        }
     </style>
 {% endblock %}
 
 {% block body %}
     <div class="container">
-        <h1 class="page-title">Просмотр записей на прием</h1>
+        <h1 class="page-title">
+            {% if app.session.get('role') == 'ROLE_ADMIN' %}
+                Все записи на прием
+            {% else %}
+                Мои записи
+            {% endif %}
+        </h1>
 
         <div class="filter-panel">
             <h3>Фильтры</h3>
             <form method="get" action="{{ path('visit_list') }}">
                 <div class="filter-row">
-                    {# Фильтр по Пациенту (только для Админа/Врача) #}
-                    {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_DOCTOR') %}
+                    {% if app.session.get('role') in ['ROLE_ADMIN', 'ROLE_DOCTOR'] %}
                         <div class="filter-group">
                             <label for="filter_patient_name">Пациент (ФИО)</label>
                             <input type="text" id="filter_patient_name" name="filter_patient_name" value="{{ filters.patient_name | default('') }}">
                         </div>
                     {% endif %}
 
-                    {# Фильтр по Специальности (для всех, кто видит список) #}
                     <div class="filter-group">
                         <label for="filter_specialty_id">Специальность</label>
                         <select id="filter_specialty_id" name="filter_specialty_id">
@@ -96,8 +291,7 @@
                         </select>
                     </div>
 
-                    {# Фильтр по Врачу (только для Админа или если не выбран конкретный врач) #}
-                    {% if is_granted('ROLE_ADMIN') %}
+                    {% if app.session.get('role') == 'ROLE_ADMIN' %}
                         <div class="filter-group">
                             <label for="filter_employee_id">Врач</label>
                             <select id="filter_employee_id" name="filter_employee_id">
@@ -112,7 +306,6 @@
                     {% endif %}
                 </div>
                 <div class="filter-row">
-                    {# Фильтр по Мед. Услуге (если используется) #}
                     <div class="filter-group">
                         <label for="filter_service_id">Медицинская услуга</label>
                         <select id="filter_service_id" name="filter_service_id">
@@ -131,7 +324,7 @@
                             <option value="">Все статусы</option>
                             {% for status_case in availableStatuses %}
                                 <option value="{{ status_case.value }}" {{ (filters.status | default('') == status_case.value) ? 'selected' : '' }}>
-                                    {{ status_case.value|trans_visit_status }} {# Предполагается Twig фильтр или функция #}
+                                    {{ status_case.value|trans_visit_status }}
                                 </option>
                             {% endfor %}
                         </select>
@@ -140,13 +333,11 @@
                 <div class="filter-row">
                     <div class="filter-group date-filter">
                         <label for="filter_date_from">Дата и время от</label>
-                        <input type="datetime-local" id="filter_date_from" name="filter_date_from"
-                               value="{{ filters.date_from | default('') }}">
+                        <input type="datetime-local" id="filter_date_from" name="filter_date_from" value="{{ filters.date_from | default('') }}">
                     </div>
                     <div class="filter-group date-filter">
                         <label for="filter_date_to">Дата и время до</label>
-                        <input type="datetime-local" id="filter_date_to" name="filter_date_to"
-                               value="{{ filters.date_to | default('') }}">
+                        <input type="datetime-local" id="filter_date_to" name="filter_date_to" value="{{ filters.date_to | default('') }}">
                     </div>
                 </div>
                 <div class="filter-buttons">
@@ -156,22 +347,75 @@
             </form>
         </div>
 
-        <div class="report-actions">
-            <span>Отчеты:</span>
-            {# Передаем текущие фильтры в генерацию отчетов #}
-            <a href="{{ path('visit_report_pdf', app.request.query.all) }}" class="action-button" style="background-color: #dc3545;">PDF</a>
-            <a href="{{ path('visit_report_excel', app.request.query.all) }}" class="action-button" style="background-color: #198754;">Excel</a>
-            <a href="{{ path('visit_report_csv', app.request.query.all) }}" class="action-button" style="background-color: #0dcaf0;">CSV</a>
-        </div>
+        {% if app.session.get('role') == 'ROLE_ADMIN' %}
+            <div class="report-actions">
+                <span>Отчеты:</span>
+                <a href="{{ path('visit_report_pdf', app.request.query.all) }}" class="action-button" style="background-color: #dc3545;">PDF</a>
+                <a href="{{ path('visit_report_excel', app.request.query.all) }}" class="action-button" style="background-color: #198754;">Excel</a>
+                <a href="{{ path('visit_report_csv', app.request.query.all) }}" class="action-button" style="background-color: #0dcaf0;">CSV</a>
+            </div>
+        {% endif %}
 
-        {% if visits is empty %}
+        {% if pagination.getTotalItemCount() > 0 %}
+            <div class="pagination-controls">
+                <div class="pagination-summary">
+                    <strong>{{ pagination.getTotalItemCount() }}</strong> записей (страница {{ pagination.getCurrentPageNumber() }} из {{ pagination.getPageCount() }})
+                </div>
+                <div class="navigation">
+                    {{ knp_pagination_render(pagination) }}
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                <tr>
+                    {% if app.session.get('role') in ['ROLE_ADMIN', 'ROLE_DOCTOR'] %}
+                        <th>Пациент</th>
+                    {% endif %}
+                    <th>Врач</th>
+                    <th>Специальность</th>
+                    <th>Мед. услуга(и)</th>
+                    <th>Дата и время</th>
+                    <th>Статус</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for visit_item in pagination %}
+                    <tr>
+                        {% if app.session.get('role') in ['ROLE_ADMIN', 'ROLE_DOCTOR'] %}
+                            <td>{{ visit_item.patient.fullName | default('N/A') }}</td>
+                        {% endif %}
+                        <td>{{ visit_item.employee.fullName | default('N/A') }}</td>
+                        <td>{{ visit_item.employee.specialty.name | default('N/A') }}</td>
+                        <td>
+                            {% if visit_item.renderedServices is not empty and visit_item.renderedServices|length > 0 %}
+                                <ul class="service-list">
+                                    {% for service in visit_item.renderedServices %}
+                                        <li>{{ service.name }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ visit_item.dateAndTime ? visit_item.dateAndTime|date('d.m.Y H:i') : 'N/A' }}</td>
+                        <td>{{ visit_item.status.value|trans_visit_status }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="pagination-controls" style="justify-content: center; margin-top: 1rem;">
+                <div class="navigation">
+                    {{ knp_pagination_render(pagination) }}
+                </div>
+            </div>
+
+        {% else %}
             <div class="no-records">
-                {# Инициализируем флаг перед циклом #}
                 {% set hasActiveFilters = false %}
-                {# Проходимся по всем значениям в массиве filters #}
-                {% for filter_value in filters %}
-                    {# Если значение фильтра не пустое, устанавливаем флаг #}
-                    {% if filter_value is not empty %}
+                {% for key, value in app.request.query.all %}
+                    {% if value is not empty and key != 'page' %}
                         {% set hasActiveFilters = true %}
                     {% endif %}
                 {% endfor %}
@@ -182,39 +426,12 @@
                     Записей на прием не найдено.
                 {% endif %}
             </div>
-        {% else %}
-            <table>
-                <thead>
-                <tr>
-                    <th>ID</th>
-                    {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_DOCTOR') %}<th>Пациент</th>{% endif %}
-                    <th>Врач</th>
-                    <th>Специальность</th>
-                    <th>Дата и время</th>
-                    <th>Статус</th>
-                    {# <th>Услуга</th> #} {# Если отображаем услугу #}
-                    {# <th>Действия</th> #} {# Если есть действия с записью #}
-                </tr>
-                </thead>
-                <tbody>
-                {% for visit_item in visits %} {# visit_item теперь объект Visit #}
-                    <tr>
-                        <td>{{ visit_item.id }}</td>
-                        {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_DOCTOR') %}<td>{{ visit_item.patient.fullName | default('N/A') }}</td>{% endif %}
-                        <td>{{ visit_item.employee.fullName | default('N/A') }}</td>
-                        <td>{{ visit_item.employee.specialty.name | default('N/A') }}</td>
-                        <td>{{ visit_item.dateAndTime ? visit_item.dateAndTime|date('d.m.Y H:i') : 'N/A' }}</td>
-                        <td>{{ visit_item.status.value|trans_visit_status }}</td> {# Используем фильтр для перевода статуса #}
-                        {# <td>{{ visit_item.service.name | default('') }}</td> #}
-                        {# <td> <a href="{{ path('visit_edit', {id: visit_item.id}) }}">Ред.</a> </td> #}
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
         {% endif %}
 
-        <div class="actions-footer">
-            <a href="{{ path('visit_form_show') }}" class="action-button">Новая запись</a>
-        </div>
+        {% if app.session.get('role') not in ['ROLE_ADMIN', 'ROLE_DOCTOR'] %}
+            <div class="actions-footer">
+                <a href="{{ path('visit_form_show') }}" class="action-button">Новая запись</a>
+            </div>
+        {% endif %}
     </div>
 {% endblock %}

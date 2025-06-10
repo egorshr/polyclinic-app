@@ -11,22 +11,29 @@ class AppExtension extends AbstractExtension
     public function getFilters(): array
     {
         return [
+            // Используем стандартный синтаксис для callable, который работает везде
             new TwigFilter('trans_visit_status', $this->translateVisitStatus(...)),
         ];
     }
 
+    // Ваш метод translateVisitStatus абсолютно правильный, оставляем его без изменений
     public function translateVisitStatus(?string $statusValue): string
     {
-        if ($statusValue === null) return 'Неизвестно';
+        if ($statusValue === null) {
+            return 'Неизвестно';
+        }
+
         $status = VisitStatus::tryFrom($statusValue);
-        if ($status === null) return ucfirst($statusValue); // Если не удалось найти в Enum
+        if ($status === null) {
+            return ucfirst($statusValue); // Если не удалось найти в Enum
+        }
 
         return match ($status) {
             VisitStatus::PLANNED => 'Запланирован',
             VisitStatus::COMPLETED => 'Завершен',
             VisitStatus::CANCELLED => 'Отменен',
             VisitStatus::MISSED => 'Пропущен',
-            default => ucfirst($status->value),
+            // default здесь не нужен, так как tryFrom уже отсек все неизвестные случаи
         };
     }
 }

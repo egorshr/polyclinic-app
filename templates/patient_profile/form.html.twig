@@ -6,195 +6,197 @@
 {% block stylesheets %}
     {{ parent() }}
     <style>
+        :root {
+            --primary-color: #6a4c93;
+            --primary-dark: #593b7a;
+            --border-color: #e9ecef;
+            --light-bg: #f8f9fa;
+            --shadow-light: 0 2px 10px rgba(0,0,0,0.08);
+            --shadow-medium: 0 4px 20px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            background-color: var(--light-bg);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         .profile-container {
-            max-width: 850px;
-            margin: 30px auto;
-            padding: 30px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 900px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: var(--shadow-medium);
+            padding: 40px;
         }
-        .profile-container h1 {
+
+        .page-title {
             text-align: center;
-            margin-bottom: 2rem; /* Немного больше отступ */
-            color: #333;
+            margin-bottom: 2.5rem;
+            font-size: 2rem;
+            font-weight: 500;
+            color: #343a40;
         }
-        fieldset {
-            border: 1px solid #e0e0e0; /* Светлее рамка */
-            padding: 1.5rem 2rem;
-            margin-bottom: 2rem;
-            border-radius: 0.375rem; /* Bootstrap 5 border-radius */
-            background-color: #fff;
+
+        .form-section {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            transition: var(--transition);
         }
-        legend {
-            float: none; width: auto; padding: 0 0.75rem; /* Немного больше padding */
-            font-size: 1.35rem; /* Чуть больше */
-            font-weight: 500; margin-bottom: 1.5rem;
-            color: #343a40; /* Темнее */
+
+        /* --- ИЗМЕНЕНИЕ: Убираем эффект сдвига при наведении --- */
+
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
         }
-        /* Для горизонтального выравнивания лейбла и инпута */
-        .form-group.row {
-            margin-bottom: 1rem; /* Стандартный отступ Bootstrap */
-        }
-        /* Убираем верхний padding у col-form-label, чтобы он лучше выравнивался с инпутом по базовой линии */
-        .col-form-label {
-            padding-top: 0;
-            padding-bottom: 0;
-            line-height: calc(1.5em + 0.75rem + 2px); /* Высота инпута Bootstrap */
-            display: flex; /* Для вертикального выравнивания, если текст лейбла в несколько строк */
-            align-items: center;
+
+        .form-group.row .col-form-label, .form-label {
             font-weight: 500;
         }
 
-        /* Убедимся, что все инпуты имеют класс form-control (тема должна это делать) */
-        /* .form-control { display: block; width: 100%; ... } */
+        .form-control, .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px 15px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
 
+
+
+        /* --- ИЗМЕНЕНИЕ: Уменьшаем кнопку и правим стили --- */
         .btn-submit-profile {
-            padding: 0.65rem 1.5rem; /* Немного изменил padding */
-            font-size: 1.05rem; /* Немного изменил размер шрифта */
+            background: var(--primary-color); /* Простой фиолетовый фон */
+            border: none;
+            border-radius: 10px; /* Более стандартный радиус */
+            padding: 12px 30px; /* Уменьшаем padding */
+            font-size: 1rem; /* Стандартный размер шрифта */
+            font-weight: 600;
+            color: white;
+
+            text-transform: none; /* Убираем CAPS LOCK */
+            letter-spacing: normal; /* Убираем доп. расстояние */
         }
-        fieldset .row:last-of-type { /* Убираем отступ у последней строки в fieldset, если она .row */
-            margin-bottom: 0 !important;
-        }
-        fieldset > .mb-3:last-of-type { /* Убираем отступ у последнего mb-3 в fieldset */
-            margin-bottom: 0 !important;
+
+
+
+        .alert-danger {
+            border-radius: 12px;
+            border: none;
+            padding: 20px;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #f8d7da 0%, #f1aeb5 100%);
+            color: #721c24;
         }
     </style>
 {% endblock %}
 
 {% block body %}
     <div class="profile-container">
-        <h1>{{ page_title }}</h1>
+
+        <h1 class="page-title">{{ page_title }}</h1>
 
         {{ form_start(profileForm, {'attr': {'class': 'needs-validation', 'novalidate': 'novalidate'}}) }}
+
         {% if not profileForm.vars.valid %}
             <div class="alert alert-danger">
-                Пожалуйста, исправьте ошибки в форме.
-                {{ form_errors(profileForm) }}
+                <strong>Внимание!</strong> Пожалуйста, исправьте ошибки в форме.
             </div>
         {% endif %}
 
-        <fieldset>
-            <legend>Личные данные</legend>
-            {# ФИО остаются с form_row, т.к. это группа из 3х полей в строке #}
+        <div class="form-section">
+            <h2 class="section-title">Личные данные</h2>
+
             <div class="row">
-                <div class="col-md-4 mb-3">
-                    {{ form_row(profileForm.lastName) }}
-                </div>
-                <div class="col-md-4 mb-3">
-                    {{ form_row(profileForm.firstName) }}
-                </div>
-                <div class="col-md-4 mb-3">
-                    {{ form_row(profileForm.middleName) }}
-                </div>
+                <div class="col-md-4 mb-3">{{ form_row(profileForm.lastName) }}</div>
+                <div class="col-md-4 mb-3">{{ form_row(profileForm.firstName) }}</div>
+                <div class="col-md-4 mb-3">{{ form_row(profileForm.middleName) }}</div>
             </div>
 
-            {# Пол, Дата рождения, Номер телефона - делаем горизонтальными с фиксированной шириной лейбла #}
-            {% set label_col = 'col-lg-3 col-md-4' %} {# Ширина колонки для лейбла #}
-            {% set widget_col = 'col-lg-9 col-md-8' %} {# Ширина колонки для виджета #}
+            {% set label_col = 'col-md-3' %}
+            {% set widget_col = 'col-md-9' %}
 
-            <div class="form-group row">
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.gender, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
                 <div class="{{ widget_col }}">
-                    {{ form_widget(profileForm.gender) }}
+                    {{ form_widget(profileForm.gender, {'attr': {'class': 'form-select'}}) }}
                     {{ form_errors(profileForm.gender) }}
                 </div>
             </div>
-            <div class="form-group row">
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.birthday, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
                 <div class="{{ widget_col }}">
                     {{ form_widget(profileForm.birthday) }}
                     {{ form_errors(profileForm.birthday) }}
                 </div>
             </div>
-            <div class="form-group row">
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.phoneNumber, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
                 <div class="{{ widget_col }}">
                     {{ form_widget(profileForm.phoneNumber) }}
                     {{ form_errors(profileForm.phoneNumber) }}
                 </div>
             </div>
-        </fieldset>
+        </div>
 
-        <fieldset>
-            <legend>Паспортные данные</legend>
-            {# Паспортные данные тоже можно сделать горизонтальными #}
-            <div class="form-group row">
+        <div class="form-section">
+            <h2 class="section-title">Паспортные данные</h2>
+
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.passportSeries, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
-                <div class="{{ widget_col }}">
-                    {{ form_widget(profileForm.passportSeries) }}
-                    {{ form_errors(profileForm.passportSeries) }}
-                </div>
+                <div class="{{ widget_col }}">{{ form_widget(profileForm.passportSeries) }}{{ form_errors(profileForm.passportSeries) }}</div>
             </div>
-            <div class="form-group row">
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.passportNumber, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
-                <div class="{{ widget_col }}">
-                    {{ form_widget(profileForm.passportNumber) }}
-                    {{ form_errors(profileForm.passportNumber) }}
-                </div>
+                <div class="{{ widget_col }}">{{ form_widget(profileForm.passportNumber) }}{{ form_errors(profileForm.passportNumber) }}</div>
             </div>
-            <div class="form-group row">
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.passportIssueDate, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
-                <div class="{{ widget_col }}">
-                    {{ form_widget(profileForm.passportIssueDate) }}
-                    {{ form_errors(profileForm.passportIssueDate) }}
-                </div>
+                <div class="{{ widget_col }}">{{ form_widget(profileForm.passportIssueDate) }}{{ form_errors(profileForm.passportIssueDate) }}</div>
             </div>
-            <div class="form-group row">
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.passportIssuedBy, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
-                <div class="{{ widget_col }}">
-                    {{ form_widget(profileForm.passportIssuedBy) }}
-                    {{ form_errors(profileForm.passportIssuedBy) }}
-                </div>
+                <div class="{{ widget_col }}">{{ form_widget(profileForm.passportIssuedBy) }}{{ form_errors(profileForm.passportIssuedBy) }}</div>
             </div>
-        </fieldset>
+        </div>
 
-        <fieldset>
-            <legend>Адрес регистрации</legend>
-            <div class="form-group row">
+        <div class="form-section">
+            <h2 class="section-title">Адрес регистрации</h2>
+
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.addressCountry, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
-                <div class="{{ widget_col }}">
-                    {{ form_widget(profileForm.addressCountry) }}
-                    {{ form_errors(profileForm.addressCountry) }}
-                </div>
+                <div class="{{ widget_col }}">{{ form_widget(profileForm.addressCountry) }}{{ form_errors(profileForm.addressCountry) }}</div>
             </div>
-            <div class="form-group row">
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.addressRegion, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
-                <div class="{{ widget_col }}">
-                    {{ form_widget(profileForm.addressRegion) }}
-                    {{ form_errors(profileForm.addressRegion) }}
-                </div>
+                <div class="{{ widget_col }}">{{ form_widget(profileForm.addressRegion) }}{{ form_errors(profileForm.addressRegion) }}</div>
             </div>
-            <div class="form-group row">
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.addressLocality, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
-                <div class="{{ widget_col }}">
-                    {{ form_widget(profileForm.addressLocality) }}
-                    {{ form_errors(profileForm.addressLocality) }}
-                </div>
+                <div class="{{ widget_col }}">{{ form_widget(profileForm.addressLocality) }}{{ form_errors(profileForm.addressLocality) }}</div>
             </div>
-            <div class="form-group row">
+            <div class="row mb-3 align-items-center">
                 {{ form_label(profileForm.addressStreet, null, {'label_attr': {'class': label_col ~ ' col-form-label'}}) }}
-                <div class="{{ widget_col }}">
-                    {{ form_widget(profileForm.addressStreet) }}
-                    {{ form_errors(profileForm.addressStreet) }}
-                </div>
+                <div class="{{ widget_col }}">{{ form_widget(profileForm.addressStreet) }}{{ form_errors(profileForm.addressStreet) }}</div>
             </div>
-            {# Дом, корпус, квартира - используем form_row в сетке, т.к. лейблы короткие и их три в ряд #}
             <div class="row">
-                <div class="col-md-4 mb-3">
-                    {{ form_row(profileForm.addressHouse) }}
-                </div>
-                <div class="col-md-4 mb-3">
-                    {{ form_row(profileForm.addressBody) }}
-                </div>
-                <div class="col-md-4 mb-3">
-                    {{ form_row(profileForm.addressApartment) }}
-                </div>
+                <div class="col-md-4 mb-3">{{ form_row(profileForm.addressHouse) }}</div>
+                <div class="col-md-4 mb-3">{{ form_row(profileForm.addressBody) }}</div>
+                <div class="col-md-4 mb-3">{{ form_row(profileForm.addressApartment) }}</div>
             </div>
-        </fieldset>
+        </div>
 
-        <div class="d-grid gap-2 col-md-6 mx-auto mt-4 mb-3"> {# Добавил mb-3 для отступа снизу #}
-            {{ form_widget(profileForm.submit, {'attr': {'class': 'btn btn-primary btn-lg btn-submit-profile w-100'}}) }}
+        <div class="d-grid col-md-6 mx-auto mt-4">
+            {{ form_widget(profileForm.submit, {'attr': {'class': 'btn btn-submit-profile'}}) }}
         </div>
 
         {{ form_end(profileForm) }}

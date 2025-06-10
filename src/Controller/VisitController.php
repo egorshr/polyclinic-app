@@ -11,7 +11,7 @@ use App\Entity\Service;
 // Медицинская услуга
 use App\Entity\Specialty;
 use App\Entity\User;
-
+use Knp\Component\Pager\PaginatorInterface;
 // Репозитории поликлиники
 use App\Repository\VisitRepository;
 use App\Repository\EmployeeRepository;
@@ -59,7 +59,8 @@ class VisitController extends AbstractController
     private MedicalServiceRepository $medicalServiceRepository; // Репозиторий для медицинских услуг
     private EmployeeRepository $employeeRepository;             // Репозиторий для сотрудников (врачей)
     private SpecialtyRepository $specialtyRepository;           // Репозиторий для специальностей
-    private PatientRepository $patientRepository;               // Репозиторий для пациентов
+    private PatientRepository $patientRepository;
+    private PaginatorInterface $paginator; // <-- ДОБАВЛЕНО СВОЙСТВО
 
     public function __construct(
         VisitRepository          $visitRepository,
@@ -70,7 +71,8 @@ class VisitController extends AbstractController
         MedicalServiceRepository $medicalServiceRepository,
         EmployeeRepository       $employeeRepository,
         SpecialtyRepository      $specialtyRepository,
-        PatientRepository        $patientRepository
+        PatientRepository        $patientRepository,
+        PaginatorInterface       $paginator // <-- ДОБАВЛЕНА ЗАВИСИМОСТЬ
     )
     {
         $this->visitRepository = $visitRepository;
@@ -82,6 +84,7 @@ class VisitController extends AbstractController
         $this->employeeRepository = $employeeRepository;
         $this->specialtyRepository = $specialtyRepository;
         $this->patientRepository = $patientRepository;
+        $this->paginator = $paginator; // <-- ИНИЦИАЛИЗАЦИЯ
     }
 
     private function getCurrentUser(): ?User
@@ -115,12 +118,29 @@ class VisitController extends AbstractController
         return null;
     }
 
-    // Новый метод для проверки, является ли пользователь пациентом
-    private function requirePatientProfile(): ?RedirectResponse
+    // Новый метод для проверки, является ли пользователь пациентом (НЕ админом)
+    private function requirePatientRole(): ?RedirectResponse
     {
         $loginRedirect = $this->requireLogin();
         if ($loginRedirect) {
             return $loginRedirect;
+        }
+
+        // Если пользователь админ - перенаправляем на список записей
+        if ($this->hasRole('ROLE_ADMIN')) {
+            $this->addFlash('info', 'Администраторы могут только просматривать записи.');
+            return $this->redirectToRoute('visit_list');
+        }
+
+        return null;
+    }
+
+    // Новый метод для проверки, является ли пользователь пациентом с профилем
+    private function requirePatientProfile(): ?RedirectResponse
+    {
+        $patientRoleRedirect = $this->requirePatientRole();
+        if ($patientRoleRedirect) {
+            return $patientRoleRedirect;
         }
 
         /** @var User $currentUser */
@@ -146,7 +166,8 @@ class VisitController extends AbstractController
     #[Route('/form', name: 'visit_form_show', methods: ['GET'])]
     public function showForm(Request $request): Response
     {
-        if ($redirect = $this->requirePatientProfile()) { // Пациент должен иметь профиль для записи
+        // Теперь проверяем, что пользователь НЕ админ и имеет профиль пациента
+        if ($redirect = $this->requirePatientProfile()) {
             return $redirect;
         }
 
@@ -217,47 +238,40 @@ class VisitController extends AbstractController
             // TODO: Проверить, соответствует ли выбранный врач выбранной специальности, если специальность тоже выбиралась
         }
 
-        // Валидация медицинской услуги (опционально, если есть поле)
         $serviceId = $data['service_id'] ?? null;
         $medicalService = null;
-        if (!empty($serviceId)) { // Если услуга обязательна, убрать !empty
+        if (!empty($serviceId)) {
             $medicalService = $this->medicalServiceRepository->find((int)$serviceId);
             if (!$medicalService) {
                 $errors['service'] = "Выбранная медицинская услуга не найдена.";
             }
-        } else {
-            // Если услуга обязательна для записи
-            // $errors['service'] = "Необходимо выбрать медицинскую услугу.";
         }
 
-
         if (empty($errors)) {
-            // Создаем новый Visit
             $visit = new Visit(
                 $patient,
                 $employee,
                 $visitDateTime,
-                VisitStatus::PLANNED // Статус по умолчанию "Запланирован"
-            // $medicalService, // Если услуга часть конструктора Visit
-            // discount // Если скидка применяется при записи
+                VisitStatus::PLANNED
             );
-            // Если услуга не в конструкторе, а как отдельное свойство или связь ManyToMany:
-            // if ($medicalService) { $visit->addServiceRendered($medicalService); }
 
+            // <-- ИЗМЕНЕНО: Добавляем услугу к визиту -->
+            if ($medicalService) {
+                $visit->addRenderedService($medicalService);
+            }
 
             try {
                 $this->entityManager->persist($visit);
                 $this->entityManager->flush();
             } catch (Exception $e) {
                 $this->addFlash('form_errors', "Ошибка сохранения записи: " . $e->getMessage());
-                $this->session->getFlashBag()->add('form_data', $data); // Сохраняем данные формы
+                $this->session->getFlashBag()->add('form_data', $data);
                 return $this->redirectToRoute('visit_form_show');
             }
 
             return $this->redirectToRoute('visit_success');
         }
 
-        // Передача ошибок в виде массива с ключами
         $this->session->getFlashBag()->add('form_errors', $errors);
         $this->session->getFlashBag()->add('form_data', $data);
         return $this->redirectToRoute('visit_form_show');
@@ -280,6 +294,7 @@ class VisitController extends AbstractController
         if ($redirect = $this->requireLogin()) {
             return $redirect;
         }
+
 
         $currentUser = $this->getCurrentUser();
         $patientProfile = $currentUser->getPatientProfile();
@@ -305,11 +320,18 @@ class VisitController extends AbstractController
             $criteria['status'] = $statusEnum;
         }
 
-        $canViewVisits = false;
+        if (!empty($filters['service_id'])) {
+            $criteria['service'] = (int)$filters['service_id'];
+        }
 
-        // ИСПРАВЛЕНО: Разрешаем пациентам фильтровать по специальности, врачу и услуге
+        $canViewVisits = false;
+        $isAdmin = false;
+
+        // Определяем роль и права доступа
         if ($this->hasRole('ROLE_ADMIN')) {
             $canViewVisits = true;
+            $isAdmin = true;
+            // Админ может фильтровать по имени пациента
             if (!empty($filters['patient_name'])) $criteria['patientName'] = $filters['patient_name'];
         } elseif ($this->hasRole('ROLE_DOCTOR') && $employeeProfile) {
             $canViewVisits = true;
@@ -335,14 +357,23 @@ class VisitController extends AbstractController
             $currentRole = $this->session->get('role');
             $this->addFlash('info', "Текущая роль: $currentRole. Профиль пациента: " . ($patientProfile ? 'есть' : 'нет') . ". Профиль врача: " . ($employeeProfile ? 'есть' : 'нет'));
         }
+        $query = $this->visitRepository->findVisitsByCriteria($criteria);
+
+        $pagination = $this->paginator->paginate(
+            $query,
+            $request->query->getInt('page', 1),
+            6 // Количество записей на странице
+        );
 
         return $this->render('visit/list.html.twig', [
+            'pagination' => $pagination, // <-- ПЕРЕДАЕМ ОБЪЕКТ ПАГИНАЦИИ
             'visits' => $visits,
             'filters' => $filters,
             'availableSpecialties' => $this->specialtyRepository->findAll(),
             'availableEmployees' => $this->employeeRepository->findAllActive(),
             'availableServices' => $this->medicalServiceRepository->findAll(),
-            'availableStatuses' => VisitStatus::cases()
+            'availableStatuses' => VisitStatus::cases(),
+            'isAdmin' => $isAdmin // Передаем флаг для шаблона
         ]);
     }
 
@@ -372,6 +403,10 @@ class VisitController extends AbstractController
         if (!empty($filters['service_id'])) $criteria['service'] = (int)$filters['service_id'];
         if (!empty($filters['status']) && $statusEnum = VisitStatus::tryFrom($filters['status'])) {
             $criteria['status'] = $statusEnum;
+        }
+
+        if (!empty($filters['service_id'])) {
+            $criteria['service'] = (int)$filters['service_id'];
         }
 
         // ИСПРАВЛЕНО: Разрешаем пациентам использовать все фильтры для своих записей
