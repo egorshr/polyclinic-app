@@ -1,8 +1,8 @@
 {# templates/components/navbar.html.twig #}
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-        {# Главная ссылка ("домашняя страница") теперь зависит от роли, проверяемой через сессию #}
-        {% set homepage_path = (app.session.get('role') == 'ROLE_ADMIN') ? path('visit_list') : path('visit_form_show') %}
+        {# Главная ссылка ("домашняя страница") теперь зависит от роли #}
+        {% set homepage_path = (app.session.get('role') in ['ROLE_ADMIN', 'ROLE_DOCTOR']) ? path('visit_list') : path('visit_form_show') %}
         <a class="navbar-brand" href="{{ homepage_path }}">Поликлиника</a>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -12,20 +12,34 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 {% if app.session.get('user_id') %}
 
-                    {# Ссылка "Запись на прием" показывается ТОЛЬКО НЕ администраторам, проверяем через сессию #}
-                    {% if app.session.get('role') != 'ROLE_ADMIN' %}
+                    {# 1. Добавляем выпадающее меню "Управление", которое видно только админу #}
+                    {% if app.session.get('role') == 'ROLE_ADMIN' %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownAdmin" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Управление
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="navbarDropdownAdmin">
+                                <li><a class="dropdown-item" href="{{ path('app_service_index') }}">Услуги</a></li>
+                                <li><a class="dropdown-item" href="{{ path('app_employee_index') }}">Врачи</a></li>                            </ul>
+                        </li>
+                    {% endif %}
+
+                    {# 2. Ссылка "Запись на прием" показывается ТОЛЬКО пациентам (скрыта для админа и врача) #}
+                    {% if app.session.get('role') not in ['ROLE_ADMIN', 'ROLE_DOCTOR'] %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ path('visit_form_show') }}">Запись на прием</a>
                         </li>
                     {% endif %}
 
                     <li class="nav-item">
-                        {# Текст ссылки меняется в зависимости от роли, проверяемой через сессию #}
-                        {% if app.session.get('role') == 'ROLE_ADMIN' %}
-                            <a class="nav-link" href="{{ path('visit_list') }}">Записи</a>
-                        {% else %}
-                            <a class="nav-link" href="{{ path('visit_list') }}">Мои записи</a>
-                        {% endif %}
+                        {# 3. Текст ссылки на список визитов меняется в зависимости от роли #}
+                        <a class="nav-link" href="{{ path('visit_list') }}">
+                            {% if app.session.get('role') == 'ROLE_ADMIN' %}
+                                Записи
+                            {% else %}
+                                Мои записи
+                            {% endif %}
+                        </a>
                     </li>
 
                 {% endif %}
@@ -33,9 +47,11 @@
             <ul class="navbar-nav">
                 {% if app.session.get('user_id') %}
                     <li class="nav-item">
-                        {# Для админа просто показываем имя, для пациента - ссылка на профиль #}
+                        {# 4. Отображение имени пользователя зависит от роли #}
                         {% if app.session.get('role') == 'ROLE_ADMIN' %}
                             <span class="nav-link me-3">{{ app.session.get('username') }} (Админ)</span>
+                        {% elseif app.session.get('role') == 'ROLE_DOCTOR' %}
+                            <span class="nav-link me-3">{{ app.session.get('username') }} (Врач)</span>
                         {% else %}
                             <a class="nav-link me-3" href="{{ path('patient_profile_edit_form') }}">
                                 {{ app.session.get('username') }}
