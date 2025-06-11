@@ -348,11 +348,11 @@
         </div>
 
         {% if app.session.get('role') == 'ROLE_ADMIN' %}
-            <div class="report-actions">
+            <div class="reports-section">
                 <span>Отчеты:</span>
-                <a href="{{ path('visit_report_pdf', app.request.query.all) }}" class="action-button" style="background-color: #dc3545;">PDF</a>
-                <a href="{{ path('visit_report_excel', app.request.query.all) }}" class="action-button" style="background-color: #198754;">Excel</a>
-                <a href="{{ path('visit_report_csv', app.request.query.all) }}" class="action-button" style="background-color: #0dcaf0;">CSV</a>
+                <a href="{{ path('visit_report_pdf', app.request.query.all) }}" class="btn btn-danger">PDF</a>
+                <a href="{{ path('visit_report_excel', app.request.query.all) }}" class="btn btn-success">Excel</a>
+                <a href="{{ path('visit_report_csv', app.request.query.all) }}" class="btn btn-info">CSV</a>
             </div>
         {% endif %}
 

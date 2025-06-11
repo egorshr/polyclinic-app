@@ -13,6 +13,7 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
+
     # 👇 ЭТО ДОБАВЬ В КОНЕЦ:
     Symfony\Component\HttpFoundation\Session\SessionInterface:
         factory: ['@session.factory', 'createSession']

@@ -45,10 +45,12 @@
             border: 1px solid #ccc;
             box-sizing: border-box;
         }
+
         .form-input-custom.is-invalid,
         .form-select-custom.is-invalid {
             border-color: #cc0000;
         }
+
         .invalid-feedback {
             color: #cc0000;
             font-size: 0.875em;
@@ -81,6 +83,7 @@
             color: #cc0000;
             border-radius: 4px;
         }
+
         .errors-summary-custom ul {
             padding-left: 20px;
             margin-bottom: 0;
@@ -99,6 +102,7 @@
             text-decoration: none;
             font-weight: bold;
         }
+
         .form-nav-links a:hover {
             text-decoration: underline;
         }
@@ -137,7 +141,8 @@
             {# Поле для выбора специальности #}
             <div>
                 <label for="specialty_id" class="form-label-custom">Специальность врача</label>
-                <select name="specialty_id" id="specialty_id" class="form-select-custom {% if errors.specialty is defined %}is-invalid{% endif %}" required>
+                <select name="specialty_id" id="specialty_id"
+                        class="form-select-custom {% if errors.specialty is defined %}is-invalid{% endif %}" required>
                     <option value="">Выберите специальность</option>
                     {% for specialty in availableSpecialties %}
                         <option value="{{ specialty.id }}" {{ (data.specialty_id | default('') == specialty.id) ? 'selected' : '' }}>
@@ -153,7 +158,8 @@
             {# Поле для выбора врача (сотрудника) - будет фильтроваться по специальности #}
             <div>
                 <label for="employee_id" class="form-label-custom">Врач</label>
-                <select name="employee_id" id="employee_id" class="form-select-custom {% if errors.employee is defined %}is-invalid{% endif %}" required>
+                <select name="employee_id" id="employee_id"
+                        class="form-select-custom {% if errors.employee is defined %}is-invalid{% endif %}" required>
                     <option value="">Сначала выберите специальность</option>
                     {# Изначально рендерим всех врачей, JS их отфильтрует/скроет #}
                     {% for employee in availableEmployees %}
@@ -171,7 +177,8 @@
             {# Поле для выбора медицинской услуги (опционально) #}
             <div>
                 <label for="service_id" class="form-label-custom">Медицинская услуга (опционально)</label>
-                <select name="service_id" id="service_id" class="form-select-custom {% if errors.service is defined %}is-invalid{% endif %}">
+                <select name="service_id" id="service_id"
+                        class="form-select-custom {% if errors.service is defined %}is-invalid{% endif %}">
                     <option value="">Выберите услугу (если необходимо)</option>
                     {% for service_item in availableServices %}
                         <option value="{{ service_item.id }}" {{ (data.service_id | default('') == service_item.id) ? 'selected' : '' }}>
@@ -186,12 +193,22 @@
 
             {# Поле для выбора даты и времени #}
             <div>
-                <label for="visit_datetime" class="form-label-custom">Дата и время приема</label>
-                <input type="datetime-local" name="visit_datetime" id="visit_datetime" class="form-input-custom {% if errors.visit_datetime is defined %}is-invalid{% endif %}"
-                       value="{{ data.visit_datetime | default('') }}" required
-                       min="{{ "now"|date("Y-m-d\\TH:i") }}">
-                {% if errors.visit_datetime is defined %}
-                    <div class="invalid-feedback">{{ errors.visit_datetime|join(', ') }}</div>
+                <label for="visit_date" class="form-label-custom">Дата приема</label>
+                <input type="date" name="visit_date" id="visit_date" class="form-input-custom {% if errors.visit_date is defined %}is-invalid{% endif %}"
+                       value="{{ data.visit_date | default('') }}" required
+                       min="{{ "now"|date("Y-m-d") }}">
+                {% if errors.visit_date is defined %}
+                    <div class="invalid-feedback">{{ errors.visit_date is iterable ? errors.visit_date|join(', ') : errors.visit_date }}</div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="visit_time" class="form-label-custom">Время приема</label>
+                <select name="visit_time" id="visit_time" class="form-select-custom {% if errors.visit_time is defined %}is-invalid{% endif %}" required disabled>
+                    <option value="">Сначала выберите врача и дату</option>
+                </select>
+                {% if errors.visit_time is defined %}
+                    <div class="invalid-feedback">{{ errors.visit_time is iterable ? errors.visit_time|join(', ') : errors.visit_time }}</div>
                 {% endif %}
             </div>
 
@@ -206,79 +223,142 @@
 
 {% block javascripts %}
     {{ parent() }}
+    {# Если не используете AssetMapper, здесь должны быть ссылки на CDN flatpickr #}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // --- 1. Получение элементов ---
             const specialtySelect = document.getElementById('specialty_id');
             const employeeSelect = document.getElementById('employee_id');
+            const dateInput = document.getElementById('visit_date');
+            const timeSelect = document.getElementById('visit_time');
 
-            if (!specialtySelect || !employeeSelect) {
-                console.error('Ошибка: один из select-элементов (specialty_id или employee_id) не найден.');
+            if (!specialtySelect || !employeeSelect || !dateInput || !timeSelect) {
+                console.error('Ошибка: один из ключевых элементов формы не найден.');
                 return;
             }
 
-            // Шаг 1: Получаем ВСЕ опции, которые есть в HTML на момент загрузки
-            const initialHtmlOptions = Array.from(employeeSelect.options);
-
-            // Шаг 2: Фильтруем их, чтобы получить только опции врачей (исключая плейсхолдеры с value="")
-            //         и сохраняем их для последующего использования.
-            //         Это `allEmployeeOptions` будет нашим "мастер-списком" врачей.
-            const allEmployeeOptions = initialHtmlOptions.filter(function(option) {
-                return option.value !== "";
+            // --- 2. Инициализация календаря Flatpickr ---
+            let calendar = flatpickr(dateInput, {
+                locale: "ru", // Используем русский язык
+                dateFormat: "Y-m-d", // Формат, который отправляется на сервер
+                altInput: true, // Показываем пользователю дату в другом формате
+                altFormat: "d.m.Y", // Формат для пользователя
+                minDate: "today",
+                enable: [], // Изначально все даты заблокированы
+                onChange: function(selectedDates, dateStr, instance) {
+                    // Эта функция будет вызвана, когда пользователь выберет дату
+                    // Запускаем загрузку временных слотов
+                    fetchTimeSlots();
+                }
             });
 
-            console.log("Мастер-список опций врачей (отфильтрованы плейсхолдеры):",
-                allEmployeeOptions.map(function(opt) {
-                    return {
-                        text: opt.textContent,
-                        value: opt.value,
-                        specialtyId: opt.dataset.specialtyId
-                    };
-                })
-            );
+            // "Мастер-список" всех врачей
+            const allEmployeeOptions = Array.from(employeeSelect.options).filter(opt => opt.value !== "");
 
+            // --- 3. Функции ---
+
+            // Функция фильтрации Врачей по Специальности
             function filterEmployeesBySpecialty() {
                 const selectedSpecialtyId = specialtySelect.value;
                 const previouslySelectedEmployeeId = employeeSelect.value;
 
-                console.log('Выбрана специальность ID:', selectedSpecialtyId);
-
-                employeeSelect.innerHTML = ''; // Полная очистка текущих опций в select
-                const placeholderOption = document.createElement('option');
-                placeholderOption.value = "";
-                placeholderOption.textContent = selectedSpecialtyId ? "Выберите врача" : "Сначала выберите специальность";
-                employeeSelect.appendChild(placeholderOption);
+                employeeSelect.innerHTML = '';
+                const placeholder = document.createElement('option');
+                placeholder.value = "";
+                placeholder.textContent = selectedSpecialtyId ? "Выберите врача" : "Сначала выберите специальность";
+                employeeSelect.appendChild(placeholder);
 
                 if (selectedSpecialtyId) {
-                    let addedCount = 0;
-                    // Итерируемся по нашему отфильтрованному "мастер-списку" врачей
                     allEmployeeOptions.forEach(function(optionTemplate) {
-                        console.log(`  Проверка врача: ${optionTemplate.textContent}, data-specialty-id: ${optionTemplate.dataset.specialtyId}`);
                         if (optionTemplate.dataset.specialtyId === selectedSpecialtyId) {
                             employeeSelect.appendChild(optionTemplate.cloneNode(true));
-                            addedCount++;
-                            console.log(`    ДОБАВЛЕН: ${optionTemplate.textContent}`);
                         }
                     });
-                    console.log(`Для специальности ${selectedSpecialtyId} добавлено врачей: ${addedCount}`);
                 }
 
-                // Восстановление выбора
-                if (previouslySelectedEmployeeId && previouslySelectedEmployeeId !== "") {
-                    const stillExists = Array.from(employeeSelect.options).some(function(opt) {
-                        return opt.value === previouslySelectedEmployeeId;
-                    });
-                    if (stillExists) {
-                        employeeSelect.value = previouslySelectedEmployeeId;
-                    } else {
-                        employeeSelect.value = "";
-                    }
-                } else {
-                    employeeSelect.value = "";
+                // Восстанавливаем выбор, если это возможно
+                if (previouslySelectedEmployeeId) {
+                    employeeSelect.value = previouslySelectedEmployeeId;
                 }
+
+                // После изменения списка врачей, нужно загрузить доступные ДАТЫ
+                fetchAvailableDates();
             }
 
+            // НОВАЯ Функция для загрузки доступных ДАТ и обновления календаря
+            function fetchAvailableDates() {
+                const doctorId = employeeSelect.value;
+
+                // Сбрасываем календарь и время, если врач не выбран
+                calendar.clear();
+                calendar.set('enable', []);
+                timeSelect.innerHTML = '<option value="">Сначала выберите врача</option>';
+                timeSelect.disabled = true;
+
+                if (!doctorId) {
+                    return;
+                }
+
+                // Запрашиваем доступные даты у API
+                fetch(`/api/employees/${doctorId}/available-dates`)
+                    .then(response => response.json())
+                    .then(dates => {
+                        if (dates.length > 0) {
+                            // "Включаем" только доступные даты в календаре
+                            calendar.set('enable', dates);
+                            dateInput.placeholder = "Выберите доступную дату";
+                        } else {
+                            dateInput.placeholder = "У этого врача нет доступных дат";
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Ошибка при загрузке дат:', error);
+                        dateInput.placeholder = "Ошибка загрузки дат";
+                    });
+            }
+
+            // Функция для загрузки ВРЕМЕНИ (остается почти такой же)
+            function fetchTimeSlots() {
+                const doctorId = employeeSelect.value;
+                const dateValue = dateInput.value;
+
+                timeSelect.innerHTML = '<option value="">Выберите время</option>';
+                timeSelect.disabled = true;
+
+                if (!doctorId || !dateValue) {
+                    return;
+                }
+
+                timeSelect.innerHTML = '<option value="">Загрузка...</option>';
+
+                fetch(`/api/employees/${doctorId}/available-slots?date=${dateValue}`)
+                    .then(response => response.json())
+                    .then(slots => {
+                        timeSelect.innerHTML = '';
+                        if (slots.length === 0) {
+                            timeSelect.innerHTML = '<option value="">Нет доступного времени</option>';
+                        } else {
+                            slots.forEach(slot => {
+                                const option = document.createElement('option');
+                                option.value = slot;
+                                option.textContent = slot;
+                                timeSelect.appendChild(option);
+                            });
+                            timeSelect.disabled = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Ошибка при загрузке слотов:', error);
+                        timeSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+                    });
+            }
+
+            // --- 4. Навешиваем обработчики ---
             specialtySelect.addEventListener('change', filterEmployeesBySpecialty);
-            filterEmployeesBySpecialty(); // Первоначальный вызов
+            employeeSelect.addEventListener('change', fetchAvailableDates);
+
+            // --- 5. Первоначальный запуск ---
+            filterEmployeesBySpecialty();
         });
     </script>
 {% endblock %}

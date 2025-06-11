@@ -11,6 +11,7 @@ use App\Entity\Service;
 // Медицинская услуга
 use App\Entity\Specialty;
 use App\Entity\User;
+use App\Service\ScheduleService;
 use Knp\Component\Pager\PaginatorInterface;
 // Репозитории поликлиники
 use App\Repository\VisitRepository;
@@ -61,6 +62,7 @@ class VisitController extends AbstractController
     private SpecialtyRepository $specialtyRepository;           // Репозиторий для специальностей
     private PatientRepository $patientRepository;
     private PaginatorInterface $paginator; // <-- ДОБАВЛЕНО СВОЙСТВО
+    private ScheduleService $scheduleService; // <-- ДОБАВЬТЕ СВОЙСТВО
 
     public function __construct(
         VisitRepository          $visitRepository,
@@ -72,7 +74,8 @@ class VisitController extends AbstractController
         EmployeeRepository       $employeeRepository,
         SpecialtyRepository      $specialtyRepository,
         PatientRepository        $patientRepository,
-        PaginatorInterface       $paginator // <-- ДОБАВЛЕНА ЗАВИСИМОСТЬ
+        PaginatorInterface       $paginator, // <-- ДОБАВЛЕНА ЗАВИСИМОСТЬ
+        ScheduleService          $scheduleService // <-- ДОБАВЬТЕ ЗАВИСИМОСТЬ
     )
     {
         $this->visitRepository = $visitRepository;
@@ -85,6 +88,7 @@ class VisitController extends AbstractController
         $this->specialtyRepository = $specialtyRepository;
         $this->patientRepository = $patientRepository;
         $this->paginator = $paginator; // <-- ИНИЦИАЛИЗАЦИЯ
+        $this->scheduleService = $scheduleService; // <-- ИНИЦИАЛИЗАЦИЯ
     }
 
     private function getCurrentUser(): ?User
@@ -203,29 +207,14 @@ class VisitController extends AbstractController
         $data = $request->request->all();
         $patient = $this->getCurrentPatient();
 
-        if (!$patient) { // Дополнительная проверка, хотя requirePatientProfile должен был отсечь
+        if (!$patient) {
             $this->addFlash('error', 'Профиль пациента не найден. Пожалуйста, перезайдите.');
             return $this->redirectToRoute('visit_form_show');
         }
 
-        // Валидация даты и времени
-        $visitDateTimeInput = $data['visit_datetime'] ?? ''; // Например, '2024-12-31 14:30'
-        $visitDateTime = null;
-        if (empty($visitDateTimeInput)) {
-            $errors['visit_datetime'] = "Дата и время приема не могут быть пустыми.";
-        } else {
-            try {
-                $visitDateTime = new DateTimeImmutable($visitDateTimeInput);
-                if ($visitDateTime < new DateTimeImmutable('now')) {
-                    $errors['visit_datetime'] = "Дата и время приема не могут быть в прошлом.";
-                }
-                // TODO: Добавить проверку на рабочее время поликлиники, доступность врача в это время (по расписанию)
-            } catch (Exception $e) {
-                $errors['visit_datetime'] = "Неверный формат даты и времени приема.";
-            }
-        }
+        // --- НАЧАЛО ИЗМЕНЕНИЙ ---
 
-        // Валидация сотрудника (врача)
+        // 1. Валидация врача (остается как есть)
         $employeeId = $data['employee_id'] ?? null;
         $employee = null;
         if (empty($employeeId)) {
@@ -235,9 +224,39 @@ class VisitController extends AbstractController
             if (!$employee) {
                 $errors['employee'] = "Выбранный врач не найден.";
             }
-            // TODO: Проверить, соответствует ли выбранный врач выбранной специальности, если специальность тоже выбиралась
         }
 
+        // 2. Валидация даты и времени (НОВАЯ ЛОГИКА)
+        $visitDateInput = $data['visit_date'] ?? ''; // '2024-10-25'
+        $visitTimeInput = $data['visit_time'] ?? ''; // '10:30'
+        $visitDateTime = null;
+
+        if (empty($visitDateInput)) $errors['visit_date'] = "Дата приема не может быть пустой.";
+        if (empty($visitTimeInput)) $errors['visit_time'] = "Время приема не может быть пустым.";
+
+        if (empty($errors)) { // Продолжаем, только если базовые поля заполнены
+            try {
+                // Собираем полную дату-время из двух полей
+                $visitDateTime = new DateTimeImmutable($visitDateInput . ' ' . $visitTimeInput);
+
+                // Используем наш сервис для проверки!
+                $dateOnly = new DateTimeImmutable($visitDateInput);
+                $availableSlots = $this->scheduleService->getAvailableSlots($employee, $dateOnly);
+
+                // Конвертируем массив объектов в массив строк для сравнения
+                $availableSlotsStrings = array_map(fn($slot) => $slot->format('H:i'), $availableSlots);
+
+                // Главная проверка: есть ли выбранное время в списке доступных?
+                if (!in_array($visitTimeInput, $availableSlotsStrings)) {
+                    $errors['visit_time'] = "Выбранное время ($visitTimeInput) недоступно для записи. Пожалуйста, выберите другое.";
+                }
+
+            } catch (Exception $e) {
+                $errors['visit_date'] = "Неверный формат даты или времени.";
+            }
+        }
+
+        // 3. Валидация услуги (остается как есть)
         $serviceId = $data['service_id'] ?? null;
         $medicalService = null;
         if (!empty($serviceId)) {
@@ -247,15 +266,16 @@ class VisitController extends AbstractController
             }
         }
 
+        // --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
         if (empty($errors)) {
             $visit = new Visit(
                 $patient,
                 $employee,
-                $visitDateTime,
+                $visitDateTime, // Используем собранный и проверенный объект
                 VisitStatus::PLANNED
             );
 
-            // <-- ИЗМЕНЕНО: Добавляем услугу к визиту -->
             if ($medicalService) {
                 $visit->addRenderedService($medicalService);
             }
@@ -264,7 +284,7 @@ class VisitController extends AbstractController
                 $this->entityManager->persist($visit);
                 $this->entityManager->flush();
             } catch (Exception $e) {
-                $this->addFlash('form_errors', "Ошибка сохранения записи: " . $e->getMessage());
+                $this->addFlash('form_errors', ["Ошибка сохранения записи: " . $e->getMessage()]);
                 $this->session->getFlashBag()->add('form_data', $data);
                 return $this->redirectToRoute('visit_form_show');
             }
