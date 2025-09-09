@@ -162,6 +162,7 @@
             margin: 0;
             font-size: 0.85em;
         }
+
         .service-list li {
             margin-bottom: 2px;
         }
@@ -218,18 +219,21 @@
             list-style: none;
             margin: 0;
         }
+
         .pagination .page-item.disabled .page-link {
             color: #6c757d;
             pointer-events: none;
             background-color: #fff;
             border-color: #dee2e6;
         }
+
         .pagination .page-item.active .page-link {
             z-index: 3;
             color: #fff;
             background-color: #6a4c93;
             border-color: #6a4c93;
         }
+
         .pagination .page-link {
             position: relative;
             display: block;
@@ -241,16 +245,19 @@
             border: 1px solid #dee2e6;
             text-decoration: none;
         }
+
         .pagination .page-link:hover {
             z-index: 2;
             color: #593b7a;
             background-color: #e9ecef;
             border-color: #dee2e6;
         }
+
         .pagination .page-item:first-child .page-link {
             border-top-left-radius: 0.25rem;
             border-bottom-left-radius: 0.25rem;
         }
+
         .pagination .page-item:last-child .page-link {
             border-top-right-radius: 0.25rem;
             border-bottom-right-radius: 0.25rem;
@@ -275,7 +282,8 @@
                     {% if app.session.get('role') in ['ROLE_ADMIN', 'ROLE_DOCTOR'] %}
                         <div class="filter-group">
                             <label for="filter_patient_name">Пациент (ФИО)</label>
-                            <input type="text" id="filter_patient_name" name="filter_patient_name" value="{{ filters.patient_name | default('') }}">
+                            <input type="text" id="filter_patient_name" name="filter_patient_name"
+                                   value="{{ filters.patient_name | default('') }}">
                         </div>
                     {% endif %}
 
@@ -333,11 +341,13 @@
                 <div class="filter-row">
                     <div class="filter-group date-filter">
                         <label for="filter_date_from">Дата и время от</label>
-                        <input type="datetime-local" id="filter_date_from" name="filter_date_from" value="{{ filters.date_from | default('') }}">
+                        <input type="datetime-local" id="filter_date_from" name="filter_date_from"
+                               value="{{ filters.date_from | default('') }}">
                     </div>
                     <div class="filter-group date-filter">
                         <label for="filter_date_to">Дата и время до</label>
-                        <input type="datetime-local" id="filter_date_to" name="filter_date_to" value="{{ filters.date_to | default('') }}">
+                        <input type="datetime-local" id="filter_date_to" name="filter_date_to"
+                               value="{{ filters.date_to | default('') }}">
                     </div>
                 </div>
                 <div class="filter-buttons">
@@ -359,7 +369,8 @@
         {% if pagination.getTotalItemCount() > 0 %}
             <div class="pagination-controls">
                 <div class="pagination-summary">
-                    <strong>{{ pagination.getTotalItemCount() }}</strong> записей (страница {{ pagination.getCurrentPageNumber() }} из {{ pagination.getPageCount() }})
+                    <strong>{{ pagination.getTotalItemCount() }}</strong> записей
+                    (страница {{ pagination.getCurrentPageNumber() }} из {{ pagination.getPageCount() }})
                 </div>
                 <div class="navigation">
                     {{ knp_pagination_render(pagination) }}
@@ -367,6 +378,8 @@
             </div>
 
             <table>
+                {# Исправленная часть таблицы в templates/visit/list.html.twig #}
+
                 <thead>
                 <tr>
                     {% if app.session.get('role') in ['ROLE_ADMIN', 'ROLE_DOCTOR'] %}
@@ -377,6 +390,9 @@
                     <th>Мед. услуга(и)</th>
                     <th>Дата и время</th>
                     <th>Статус</th>
+                    {% if app.session.get('role') in ['ROLE_DOCTOR', 'ROLE_ADMIN'] %}
+                        <th>Действия</th>
+                    {% endif %}
                 </tr>
                 </thead>
                 <tbody>
@@ -385,6 +401,7 @@
                         {% if app.session.get('role') in ['ROLE_ADMIN', 'ROLE_DOCTOR'] %}
                             <td>{{ visit_item.patient.fullName | default('N/A') }}</td>
                         {% endif %}
+
                         <td>{{ visit_item.employee.fullName | default('N/A') }}</td>
                         <td>{{ visit_item.employee.specialty.name | default('N/A') }}</td>
                         <td>
@@ -400,6 +417,41 @@
                         </td>
                         <td>{{ visit_item.dateAndTime ? visit_item.dateAndTime|date('d.m.Y H:i') : 'N/A' }}</td>
                         <td>{{ visit_item.status.value|trans_visit_status }}</td>
+
+                        {% if app.session.get('role') in ['ROLE_DOCTOR', 'ROLE_ADMIN'] %}
+                            <td>
+                                {% set showCompleteButton = false %}
+
+                                {# Для админа - показываем кнопку для всех запланированных визитов #}
+                                {% if app.session.get('role') == 'ROLE_ADMIN' and visit_item.status.value == 'planned' %}
+                                    {% set showCompleteButton = true %}
+                                {% endif %}
+
+                                {# Для врача - показываем кнопку только для своих запланированных визитов #}
+                                {# ВНИМАНИЕ: Здесь нужно передать данные о текущем враче из контроллера! #}
+                                {% if app.session.get('role') == 'ROLE_DOCTOR' and visit_item.status.value == 'planned' %}
+                                    {# Это нужно проверить в контроллере и передать как переменную #}
+                                    {% if currentEmployeeId is defined and currentEmployeeId == visit_item.employee.id %}
+                                        {% set showCompleteButton = true %}
+                                    {% endif %}
+                                {% endif %}
+
+                                {% if showCompleteButton %}
+                                    <form
+                                            method="post"
+                                            action="{{ path('visit_complete', {'id': visit_item.id}) }}"
+                                            onsubmit="return confirm('Вы уверены, что хотите завершить этот визит?');"
+                                            style="margin:0;">
+
+                                        <input type="hidden" name="_token"
+                                               value="{{ csrf_token('complete' ~ visit_item.id) }}">
+                                        <button type="submit" class="btn btn-sm btn-success">Завершить</button>
+                                    </form>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        {% endif %}
                     </tr>
                 {% endfor %}
                 </tbody>
@@ -435,3 +487,5 @@
         {% endif %}
     </div>
 {% endblock %}
+
+

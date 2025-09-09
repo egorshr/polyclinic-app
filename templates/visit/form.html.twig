@@ -176,10 +176,10 @@
 
             {# Поле для выбора медицинской услуги (опционально) #}
             <div>
-                <label for="service_id" class="form-label-custom">Медицинская услуга (опционально)</label>
+                <label for="service_id" class="form-label-custom">Медицинская услуга</label>
                 <select name="service_id" id="service_id"
                         class="form-select-custom {% if errors.service is defined %}is-invalid{% endif %}">
-                    <option value="">Выберите услугу (если необходимо)</option>
+                    <option value="">Выберите услугу</option>
                     {% for service_item in availableServices %}
                         <option value="{{ service_item.id }}" {{ (data.service_id | default('') == service_item.id) ? 'selected' : '' }}>
                             {{ service_item.name }} ({{ service_item.price }} руб.)

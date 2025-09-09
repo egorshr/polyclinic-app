@@ -15,10 +15,8 @@
 {% include 'components/navbar.html.twig' %}
 
 <div class="container mt-4">
-    {# Отображение flash-сообщений из AuthController и VisitController #}
     {% for label, messages in app.flashes(['success', 'error', 'warning', 'info', 'login_success', 'form_errors', 'register_errors']) %}
         {% for message in messages %}
-            {# Если сообщение - это массив (как form_errors из AuthController), обрабатываем его отдельно #}
             {% if message is iterable and label == 'form_errors' or label == 'register_errors' %}
                 <div class="alert alert-danger alert-dismissible fade show" role="alert"> {# Используем danger для form_errors #}
                     <strong>Обнаружены ошибки:</strong>

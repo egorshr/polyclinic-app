@@ -36,6 +36,7 @@ use Mpdf\MpdfException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Finder\Exception\AccessDeniedException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -373,7 +374,7 @@ class VisitController extends AbstractController
                 $this->addFlash('error', "Ошибка при загрузке записей на прием: " . $e->getMessage());
             }
         } else {
-            // Добавим отладочную информацию
+
             $currentRole = $this->session->get('role');
             $this->addFlash('info', "Текущая роль: $currentRole. Профиль пациента: " . ($patientProfile ? 'есть' : 'нет') . ". Профиль врача: " . ($employeeProfile ? 'есть' : 'нет'));
         }
@@ -382,18 +383,26 @@ class VisitController extends AbstractController
         $pagination = $this->paginator->paginate(
             $query,
             $request->query->getInt('page', 1),
-            6 // Количество записей на странице
+            4
         );
 
+
+
+        $currentEmployeeId = null;
+        if ($this->hasRole('ROLE_DOCTOR') && $employeeProfile) {
+            $currentEmployeeId = $employeeProfile->getId();
+        }
+
         return $this->render('visit/list.html.twig', [
-            'pagination' => $pagination, // <-- ПЕРЕДАЕМ ОБЪЕКТ ПАГИНАЦИИ
+            'pagination' => $pagination,
             'visits' => $visits,
             'filters' => $filters,
             'availableSpecialties' => $this->specialtyRepository->findAll(),
             'availableEmployees' => $this->employeeRepository->findAllActive(),
             'availableServices' => $this->medicalServiceRepository->findAll(),
             'availableStatuses' => VisitStatus::cases(),
-            'isAdmin' => $isAdmin // Передаем флаг для шаблона
+            'isAdmin' => $isAdmin,
+            'currentEmployeeId' => $currentEmployeeId // <-- ДОБАВИТЬ ЭТУ СТРОКУ
         ]);
     }
 
@@ -574,6 +583,50 @@ class VisitController extends AbstractController
         $response->headers->set('Content-Type', 'text/csv; charset=utf-8'); // Добавляем charset
         $response->headers->set('Content-Disposition', 'attachment; filename="visits_report.csv"');
         return $response;
+    }
+
+    #[Route('/{id}/complete', name: 'visit_complete', methods: ['POST'])]
+    public function completeVisit(Request $request, Visit $visit, EntityManagerInterface $entityManager): Response
+    {
+        // 1. Проверяем авторизацию через кастомную систему (как в остальном коде)
+        if ($redirect = $this->requireLogin()) {
+            return $redirect;
+        }
+
+        $currentUser = $this->getCurrentUser();
+
+        // 2. Проверяем роль через кастомную систему
+        if (!$this->hasRole('ROLE_DOCTOR') && !$this->hasRole('ROLE_ADMIN')) {
+            $this->addFlash('error', 'У вас нет прав для выполнения этого действия.');
+            return $this->redirectToRoute('visit_list');
+        }
+
+        // 3. Если это врач (не админ), проверяем что визит назначен именно ему
+        if ($this->hasRole('ROLE_DOCTOR') && !$this->hasRole('ROLE_ADMIN')) {
+            $employeeProfile = $currentUser->getEmployeeProfile();
+
+            if (!$employeeProfile || $visit->getEmployee()->getId() !== $employeeProfile->getId()) {
+                $this->addFlash('error', 'Вы не можете изменять статус визита, который вам не назначен.');
+                return $this->redirectToRoute('visit_list');
+            }
+        }
+
+        // 4. Проверяем CSRF токен
+        if (!$this->isCsrfTokenValid('complete'.$visit->getId(), $request->request->get('_token'))) {
+            $this->addFlash('error', 'Неверный токен безопасности. Попробуйте еще раз.');
+            return $this->redirectToRoute('visit_list');
+        }
+
+        // 5. Проверяем статус и меняем его
+        if ($visit->getStatus() === VisitStatus::PLANNED) {
+            $visit->setStatus(VisitStatus::COMPLETED);
+            $entityManager->flush();
+            $this->addFlash('success', 'Статус визита успешно изменен на "Завершен".');
+        } else {
+            $this->addFlash('info', 'Этот визит уже был обработан ранее.');
+        }
+
+        return $this->redirectToRoute('visit_list');
     }
 
     private function hasRole(string $role): bool

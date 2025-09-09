@@ -6,6 +6,7 @@ namespace App\Controller;
 use App\Entity\Employee;
 use App\Repository\ScheduleRepository;
 use App\Repository\VisitRepository;
+use DateInterval;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
@@ -38,10 +39,10 @@ class BookingController extends AbstractController
         $durationOfVisit = $employee->getDurationOfVisit();
         if (!$durationOfVisit) {
             // Если у врача не указана длительность, используем значение по умолчанию (например, 30 минут)
-            $interval = new \DateInterval('PT30M');
+            $interval = new DateInterval('PT30M');
         } else {
             // Преобразуем 'H:i:s' в DateInterval
-            $interval = new \DateInterval('PT' . $durationOfVisit->format('H') . 'H' . $durationOfVisit->format('i') . 'M');
+            $interval = new DateInterval('PT' . $durationOfVisit->format('H') . 'H' . $durationOfVisit->format('i') . 'M');
         }
 
         // 3. Найти все уже существующие записи (визиты) к этому врачу на этот день

@@ -82,8 +82,6 @@ class Patient
         $this->user = $user;
         $this->visits = new ArrayCollection();
 
-        // Предзаполнение имени и фамилии из User, если они есть у User
-        // и еще не установлены в этом объекте Patient (что верно для нового)
         if ($user->getFirstName() && $this->firstName === null) {
             $this->setFirstName($user->getFirstName());
         }
@@ -92,9 +90,7 @@ class Patient
         }
     }
 
-    // Далее идут все геттеры и сеттеры.
-    // Важно, чтобы они были сгенерированы/обновлены для поддержки nullable типов.
-    // Например:
+
     public function getId(): ?int { return $this->id; }
     public function getUser(): User { return $this->user; }
     public function setUser(User $user): static { $this->user = $user; return $this; }

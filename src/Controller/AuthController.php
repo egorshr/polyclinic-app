@@ -263,30 +263,4 @@ class AuthController extends AbstractController
         return $session->has('role') && $sessionRole === $targetRole;
     }
 
-    // Эти методы могут быть не нужны, если ты полностью полагаешься на проверки в начале каждого "защищенного" действия
-    // или если начнешь использовать систему безопасности Symfony (firewalls, access_control, #[IsGranted])
-    /*
-    public function requireLogin(SessionInterface $session, UrlGeneratorInterface $urlGenerator): ?RedirectResponse
-    {
-        if (!$this->isLoggedIn($session)) {
-            $this->addFlash('error', 'Для доступа к этой странице необходимо авторизоваться.');
-            // Сохранение target_path лучше делать в том месте, где доступ запрещается,
-            // перед непосредственным редиректом на логин.
-            return new RedirectResponse($urlGenerator->generate('auth_login_form'));
-        }
-        return null;
-    }
-
-    public function requireAdmin(SessionInterface $session, UrlGeneratorInterface $urlGenerator): ?Response
-    {
-        $redirect = $this->requireLogin($session, $urlGenerator);
-        if ($redirect) {
-            return $redirect;
-        }
-        if (!$this->hasRole('ADMIN', $session)) {
-            throw new AccessDeniedHttpException("Доступ запрещен. Требуются права администратора.");
-        }
-        return null;
-    }
-    */
 }
