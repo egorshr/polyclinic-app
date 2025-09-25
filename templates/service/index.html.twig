@@ -1,0 +1,57 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Управление услугами{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <h1 class="mb-4">Управление услугами</h1>
+
+        {# Display flash messages #}
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert alert-{{ label }}" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endfor %}
+
+        {# Here you can add a button to create a new service #}
+        {# <a href="{{ path('app_service_new') }}" class="btn btn-primary mb-3">Добавить услугу</a> #}
+
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Название</th>
+                <th scope="col">Цена</th>
+                <th scope="col" class="text-end">Действия</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for service in services %}
+                <tr>
+                    <th scope="row">{{ service.id }}</th>
+                    <td>{{ service.name }}</td>
+                    <td>{{ service.price|number_format(2, ',', ' ') }} ₽</td>
+                    <td class="text-end">
+                        <a href="{{ path('app_service_edit', {'id': service.id}) }}" class="btn btn-sm btn-warning me-2">
+                            <i class="bi bi-pencil-fill"></i> Редактировать
+                        </a>
+                        <form method="post" action="{{ path('app_service_delete', {'id': service.id}) }}" onsubmit="return confirm('Вы уверены, что хотите удалить эту услугу?');" style="display: inline-block;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ service.id) }}">
+                            <button class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash-fill"></i> Удалить
+                            </button>
+                        </form>
+
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="4" class="text-center">Услуги не найдены.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

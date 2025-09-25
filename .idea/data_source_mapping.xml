@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/1686ca32-7901-48b5-9749-17e1b46c5036/console.sql" value="1686ca32-7901-48b5-9749-17e1b46c5036" />
+    <file url="dbSrc:///ffb522bb/1686ca32-7901-48b5-9749-17e1b46c5036/schema/mydb/routine/get_employee_performance_report@(date,date)P.sql" value="1686ca32-7901-48b5-9749-17e1b46c5036" />
+    <file url="dbSrc:///ffb522bb/1686ca32-7901-48b5-9749-17e1b46c5036/schema/mydb/routine/get_full_report_by_employee@(int)P.sql" value="1686ca32-7901-48b5-9749-17e1b46c5036" />
+  </component>
+</project>

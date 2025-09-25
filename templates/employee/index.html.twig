@@ -1,0 +1,45 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Управление сотрудниками{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <h1 class="mb-4">Управление сотрудниками</h1>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert alert-{{ label }}" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endfor %}
+
+        {# <a href="{{ path('app_employee_new') }}" class="btn btn-primary mb-3">Добавить сотрудника</a> #}
+
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th>ФИО</th>
+                <th>Специальность</th>
+                <th>Телефон</th>
+                <th>Пользователь (Login)</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for employee in employees %}
+                <tr>
+                    <td>{{ employee.fullName }}</td>
+                    <td>{{ employee.specialty.name }}</td>
+                    <td>{{ employee.phoneNumber }}</td>
+                    <td>{{ employee.user.username }}</td>
+
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="5" class="text-center">Сотрудники не найдены.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

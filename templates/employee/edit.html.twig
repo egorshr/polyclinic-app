@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Редактировать данные сотрудника{% endblock %}
+
+{% block body %}
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h1 class="h3 mb-0">Редактировать: {{ employee.fullName }}</h1>
+                    </div>
+                    <div class="card-body">
+
+                        <form method="post">
+                            <div class="mb-3">
+                                <label for="fullName" class="form-label">ФИО</label>
+                                <input type="text" id="fullName" class="form-control" value="{{ employee.fullName }}" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="specialty" class="form-label">Специальность</label>
+                                <input type="text" id="specialty" class="form-control" value="{{ employee.specialty.name }}" disabled>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="phoneNumber" class="form-label">Номер телефона</label>
+                                <input type="tel" id="phoneNumber" name="phoneNumber" class="form-control" value="{{ employee.phoneNumber }}" required>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ path('app_employee_index') }}" class="btn btn-secondary">Отмена</a>
+                                <button type="submit" class="btn btn-primary">Сохранить</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
